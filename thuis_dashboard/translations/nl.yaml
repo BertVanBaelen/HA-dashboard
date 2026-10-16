@@ -1,0 +1,4 @@
+configuration:
+  log_level:
+    name: Log niveau
+    description: Hoeveel detail er in het log van de app komt.

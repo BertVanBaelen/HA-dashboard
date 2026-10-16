@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.mock-data/
+*.log
+.DS_Store
+Thumbs.db
+
+# persoonlijke exports – niet publiek zetten
+Entity list.txt
+current dashboard.txt
+
+# Lokale ontwerpdocumenten
+FEATURE_ANALYSIS.md
+features/

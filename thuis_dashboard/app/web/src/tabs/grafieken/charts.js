@@ -1,0 +1,173 @@
+import {
+  mdiSofaOutline, mdiBedOutline, mdiShowerHead, mdiWeatherPartlyCloudy, mdiRadiator, mdiBatteryCharging60,
+  mdiThermometer, mdiFlash, mdiSpeedometer, mdiSpeedometerSlow, mdiMapMarkerDistance, mdiEvStation,
+  mdiCellphone, mdiTablet, mdiAccessPointNetwork,
+} from '@mdi/js';
+import { ROOMS, HOME, CAR_ENTITIES as CAR, PEOPLE, DOOR_SENSORS } from '$shared/config.js';
+import { PERSON_COLORS } from '../../lib/colors.js';
+import { period5min, periodDaily, periodHourly } from './data.js';
+
+const ROOM_ICONS = { living: mdiSofaOutline, slaapkamer: mdiBedOutline, badkamer: mdiShowerHead };
+const PCT = { unit: '%', range: [0, 100] };
+const friendlyLabel = (n) => (n && !/^0x[0-9a-f]+/i.test(n) ? n : 'Zigbee-sensor');
+
+/** @returns {import('./data.js').ChartDef[]} */
+export function klimaatCharts() {
+  const rooms = ROOMS.map((r) => ({
+    id: `room-${r.key}`,
+    title: r.name,
+    iconPath: ROOM_ICONS[r.key],
+    defaultRange: '24u',
+    axes: { y: { unit: '°C' }, y2: { unit: '%', digits: 0 } },
+    series: [
+      { entity: r.temperature, label: r.extraTemperature ? 'Tado' : 'Temperatuur', color: '--accent', type: 'area' },
+      r.extraTemperature && { entity: r.extraTemperature, label: 'Kamersensor', color: '--accent-3' },
+      { entity: r.climate, attr: 'temperature', label: 'Setpoint', color: '--heat', type: 'step', dash: true, unit: '°C' },
+      { entity: r.humidity, label: 'Vochtigheid', color: '--info', axis: 'y2', digits: 0 },
+    ].filter(Boolean),
+  }));
+  return [
+    ...rooms,
+    {
+      id: 'outdoor',
+      title: 'Buiten',
+      iconPath: mdiWeatherPartlyCloudy,
+      accent: 'var(--cool)',
+      defaultRange: '7d',
+      axes: { y: { unit: '°C' } },
+      series: [{ entity: HOME.outdoorTemperature, label: 'Buiten', color: '--cool', type: 'area' }],
+    },
+    {
+      id: 'heating',
+      title: 'Verwarmingsvermogen',
+      iconPath: mdiRadiator,
+      accent: 'var(--heat)',
+      defaultRange: '24u',
+      stacked: true,
+      axes: { y: { unit: '%', zero: true, digits: 0 } },
+      series: ROOMS.map((r, i) => ({ entity: r.heating, label: r.name, color: ['--heat', '--accent-2', '--accent-3'][i % 3], digits: 0 })),
+    },
+  ];
+}
+
+/** @returns {import('./data.js').ChartDef[]} */
+export function autoCharts() {
+  return [
+    {
+      id: 'car-soc',
+      title: 'Batterij',
+      iconPath: mdiBatteryCharging60,
+      accent: 'var(--ok)',
+      defaultRange: '7d',
+      period: periodHourly,
+      axes: { y: PCT },
+      series: [{ entity: CAR.soc, label: 'Batterij', color: '--ok', type: 'area', digits: 0 }],
+    },
+    {
+      id: 'car-temp',
+      title: 'Temperatuur',
+      iconPath: mdiThermometer,
+      defaultRange: '7d',
+      ranges: ['7d', '30d'],
+      period: periodDaily,
+      axes: { y: { unit: '°C' } },
+      series: [
+        { entity: CAR.interiorTemperature, label: 'Binnen', color: '--ok' },
+        { entity: CAR.exteriorTemperature, label: 'Buiten', color: '--danger' },
+      ],
+    },
+    {
+      id: 'car-power',
+      title: 'Instant power',
+      iconPath: mdiFlash,
+      accent: 'var(--warn)',
+      defaultRange: '24u',
+      period: period5min,
+      series: [{ entity: CAR.instantPower, label: 'Vermogen', color: '--warn', type: 'area' }],
+    },
+    {
+      id: 'car-speed-day',
+      title: 'Snelheid per dag',
+      iconPath: mdiSpeedometer,
+      defaultRange: '7d',
+      ranges: ['7d', '30d'],
+      period: periodDaily,
+      axes: { y: { zero: true, digits: 0 } },
+      series: [
+        { entity: CAR.speed, stat: 'max', label: 'Max', color: '--accent-2', type: 'bar', size: 0.75, digits: 0 },
+        { entity: CAR.speed, stat: 'mean', label: 'Gemiddeld', color: '--accent', type: 'bar', size: 0.4, digits: 0 },
+      ],
+    },
+    {
+      id: 'car-speed-recent',
+      title: 'Snelheid recent',
+      iconPath: mdiSpeedometerSlow,
+      defaultRange: '6u',
+      ranges: ['6u', '24u'],
+      period: period5min,
+      axes: { y: { zero: true, digits: 0 } },
+      series: [{ entity: CAR.speed, label: 'Snelheid', color: '--accent', type: 'bar', size: 0.8, digits: 0 }],
+    },
+    {
+      id: 'car-km',
+      title: 'Kilometers per dag',
+      iconPath: mdiMapMarkerDistance,
+      accent: 'var(--accent-2)',
+      defaultRange: '30d',
+      ranges: ['7d', '30d'],
+      period: periodDaily,
+      axes: { y: { zero: true, digits: 0 } },
+      series: [{ entity: CAR.mileage, stat: 'change', label: 'Gereden', color: '--accent-2', type: 'bar', size: 0.7, digits: 0 }],
+    },
+    {
+      id: 'car-charge',
+      title: 'Laadsessie',
+      iconPath: mdiEvStation,
+      accent: 'var(--ok)',
+      defaultRange: '6u',
+      axes: { y: PCT, y2: { zero: true } },
+      series: [
+        { entity: CAR.soc, label: 'Batterij', color: '--ok', type: 'area', digits: 0 },
+        { entity: CAR.chargingPower, label: 'Laadvermogen', color: '--danger', axis: 'y2' },
+      ],
+    },
+  ];
+}
+
+/**
+ * @param {Record<string,string>} labels sensor label overrides (household.sensorLabels)
+ * @param {(id: string) => string|undefined} friendly
+ * @returns {import('./data.js').ChartDef[]}
+ */
+export function batterijCharts(labels, friendly) {
+  const zigbee = 'sensor.0x103597000087635a_battery';
+  return [
+    {
+      id: 'bat-phones',
+      title: 'Telefoons',
+      iconPath: mdiCellphone,
+      defaultRange: '24u',
+      axes: { y: PCT },
+      series: PEOPLE.map((p) => ({ entity: p.battery, label: p.name, color: PERSON_COLORS[p.key] ?? '--accent', digits: 0 })),
+    },
+    {
+      id: 'bat-tablet',
+      title: 'Tablet',
+      iconPath: mdiTablet,
+      defaultRange: '24u',
+      axes: { y: PCT },
+      series: [{ entity: 'sensor.tablet_battery_level', label: 'Tablet', color: '--accent', type: 'area', digits: 0 }],
+    },
+    {
+      id: 'bat-sensors',
+      title: 'Sensoren',
+      iconPath: mdiAccessPointNetwork,
+      defaultRange: '30d',
+      axes: { y: PCT },
+      series: [
+        ...DOOR_SENSORS.map((d, i) => ({ entity: d.battery, label: labels?.[d.entity] ?? d.defaultLabel, color: ['--accent', '--accent-2'][i % 2], digits: 0 })),
+        { entity: zigbee, label: friendlyLabel(friendly(zigbee)), color: '--accent-3', digits: 0 },
+      ],
+    },
+  ];
+}
