@@ -297,7 +297,8 @@ export class MockHaClient extends EventEmitter {
 
   async send(msg) {
     if (msg.type === 'media_player/browse_media') {
-      const item = (title, id, canPlay, canExpand) => ({ title, media_content_id: id, can_play: canPlay, can_expand: canExpand });
+      const item = (title, id, canPlay, canExpand) => ({ title, media_content_id: id, media_content_type: canPlay ? 'track' : 'directory', can_play: canPlay, can_expand: canExpand });
+      if (!msg.media_content_id !== !msg.media_content_type) throw new Error('media_content_type and media_content_id must be provided together');
       const id = msg.media_content_id;
       if (!id) return { title: 'Living Room Stereo', media_content_id: '', children: [item('Net Radio', 'input:net_radio', false, true), item('Favorieten', 'presets', false, true), item('Server', 'input:server', false, true)] };
       if (id === 'input:net_radio') return { title: 'Net Radio', media_content_id: id, children: [item('Bookmarks', 'list:net_radio:bm:-1', false, true), item('Locatie', 'list:net_radio:loc:-1', false, true)] };

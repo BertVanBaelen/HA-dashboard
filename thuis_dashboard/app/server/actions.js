@@ -115,10 +115,13 @@ export class Actions {
   }
 
   /** Browses the stereo's own media tree (Net Radio, presets, ...). */
-  async browseStereo(mediaId) {
+  async browseStereo(mediaId, mediaType) {
     if (!stereoIsOn((id) => this.ha.getState(id))) await this.#script(MEDIA.scripts.stereoOn);
     const msg = { type: 'media_player/browse_media', entity_id: MEDIA.stereo };
-    if (mediaId) msg.media_content_id = mediaId;
+    if (mediaId) {
+      msg.media_content_id = mediaId;
+      msg.media_content_type = mediaType || 'directory';
+    }
     const res = await this.ha.send(msg);
     return {
       title: res.title ?? '',
@@ -126,6 +129,7 @@ export class Actions {
       children: (res.children ?? []).map((c) => ({
         title: c.title,
         mediaId: c.media_content_id,
+        mediaType: c.media_content_type,
         canPlay: !!c.can_play,
         canExpand: !!c.can_expand,
       })),

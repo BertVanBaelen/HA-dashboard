@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+- Fix: Net Radio bladeren gaf "media_content_type and media_content_id must be provided together".
+  Favorieten: Andere radio → Net Radio → Podcasts → Favorites.
+
 ## 0.3.1
 - Stereo: radio speelt nu via Net Radio van de MusicCast-stereo zelf (niet meer via de server-/URL-functie).
   In 'Andere radio' blader je door het Net Radio-menu van de stereo; tik op de ster om een favoriet toe te voegen.

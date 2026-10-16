@@ -6,26 +6,26 @@
   import Icon from '../../components/Icon.svelte';
   import EmptyState from '../../components/EmptyState.svelte';
 
-  /** @typedef {{title:string,mediaId:string,canPlay:boolean,canExpand:boolean}} Item */
+  /** @typedef {{title:string,mediaId:string,mediaType:string,canPlay:boolean,canExpand:boolean}} Item */
   /** @type {{ open?: boolean, currentId?: string|null, onplay: (r: {name:string,mediaId:string}) => void }} */
   let { open = $bindable(false), currentId = null, onplay } = $props();
 
   /** Browse path on the stereo (MusicCast media browser); first entry is the root. */
-  let trail = $state(/** @type {{title:string,mediaId:string|null}[]} */ ([]));
+  let trail = $state(/** @type {{title:string,mediaId:string|null,mediaType:string|null}[]} */ ([]));
   let items = $state(/** @type {Item[]|null} */ (null));
   let error = $state('');
   let started = false;
 
-  async function browse(/** @type {string|null} */ mediaId, /** @type {string} */ title, push = true) {
+  async function browse(/** @type {string|null} */ mediaId, /** @type {string|null} */ mediaType, /** @type {string} */ title, push = true) {
     items = null;
     error = '';
     try {
-      const res = await action('browseStereo', mediaId ? { mediaId } : {}, null);
+      const res = await action('browseStereo', mediaId ? { mediaId, mediaType } : {}, null);
       const list = /** @type {Item[]} */ (res?.children ?? []);
       // Jump straight into Net Radio when the root offers it
       const net = !mediaId && list.find((c) => c.canExpand && /net\s*radio/i.test(c.title));
-      if (net) return browse(net.mediaId, net.title, push);
-      if (push) trail = [...trail, { title: title || res?.title || '', mediaId }];
+      if (net) return browse(net.mediaId, net.mediaType, net.title, push);
+      if (push) trail = [...trail, { title: title || res?.title || '', mediaId, mediaType }];
       items = list;
     } catch (e) {
       error = e instanceof Error ? e.message : 'Laden mislukt';
@@ -37,14 +37,14 @@
     if (trail.length < 2) return;
     const prev = trail[trail.length - 2];
     trail = trail.slice(0, -2);
-    browse(prev.mediaId, prev.title);
+    browse(prev.mediaId, prev.mediaType, prev.title);
   }
 
   $effect(() => {
     if (open && !started) {
       started = true;
       trail = [];
-      browse(null, 'Net Radio');
+      browse(null, null, 'Net Radio');
     }
     if (!open) started = false;
   });
@@ -76,7 +76,7 @@
       {#each [0, 1, 2, 3, 4, 5] as i (i)}<div class="skeleton" style="height:56px;border-radius:14px"></div>{/each}
     {:else if error}
       <EmptyState iconPath={mdiRadioTower} title="Zenders laden mislukt" text={error}>
-        <button class="btn soft sm" onclick={() => { trail = []; browse(null, 'Net Radio'); }}>Opnieuw</button>
+        <button class="btn soft sm" onclick={() => { trail = []; browse(null, null, 'Net Radio'); }}>Opnieuw</button>
       </EmptyState>
     {:else if !items.length}
       <EmptyState iconPath={mdiRadioTower} text="Niets gevonden" />
@@ -95,7 +95,7 @@
                 <Icon path={favIds.has(r.mediaId) ? mdiStar : mdiStarOutline} size={22} />
               </button>
             {:else if r.canExpand}
-              <button class="play" onclick={() => browse(r.mediaId, r.title)}>
+              <button class="play" onclick={() => browse(r.mediaId, r.mediaType, r.title)}>
                 <span class="fav dir"><Icon path={mdiFolder} size={22} /></span>
                 <span class="grow ellipsis">{r.title}</span>
                 <Icon path={mdiChevronRight} size={20} />

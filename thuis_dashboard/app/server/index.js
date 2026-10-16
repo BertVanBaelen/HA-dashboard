@@ -204,7 +204,7 @@ async function runAction(client, name, args) {
     case 'playRadio': return actions.playRadio(args.mediaId);
     case 'selectStereoSource': return actions.selectStereoSource(args.key);
     case 'heatRoom': return actions.heatRoom(args.room);
-    case 'browseStereo': return actions.browseStereo(args.mediaId);
+    case 'browseStereo': return actions.browseStereo(args.mediaId, args.mediaType);
     case 'setupStartDashboard': return setupStartDashboard();
     case 'testArrival': {
       const person = actions.personForUser(client.user.id);
