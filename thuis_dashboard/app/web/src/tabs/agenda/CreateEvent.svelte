@@ -1,6 +1,6 @@
 <script>
   import { untrack } from 'svelte';
-  import { states, name, callService } from '../../lib/api.js';
+  import { states, household, name, callService } from '../../lib/api.js';
   import { haDate, haDateTime, parseHaDate } from '../../lib/calendar.js';
   import { colorFor } from '../../lib/colors.js';
   import { isSameDay, startOfDay } from '../../lib/format.js';
@@ -107,7 +107,7 @@
       <span>Agenda</span>
       <div class="wrap row" style="gap:8px">
         {#each calendars as c (c)}
-          <Chip label={name($states[c]) || c} color={colorFor(c)} active={cal === c} onclick={() => (cal = c)} />
+          <Chip label={name($states[c]) || c} color={colorFor(c, $household)} active={cal === c} onclick={() => (cal = c)} />
         {/each}
       </div>
     </div>

@@ -173,6 +173,13 @@
     { key: 'seatL', label: 'Links', sw: E.seatLeft, lvl: E.seatLeftLevel },
     { key: 'seatR', label: 'Rechts', sw: E.seatRight, lvl: E.seatRightLevel },
   ];
+  /** Dropdown: 'off' turns the switch off; a level selects it and turns the switch on. */
+  async function setSeat(/** @type {typeof seats[number]} */ seat, /** @type {string} */ v) {
+    const on = isOn(s(seat.sw));
+    if (v === 'off') return on && send(seat.key, 'switch', 'turn_off', seat.sw, { want: false });
+    if (v !== 'on' && s(seat.lvl)?.state !== v) await send(seat.key + 'L', 'select', 'select_option', seat.lvl, { data: { option: v }, want: v });
+    if (!on) await send(seat.key, 'switch', 'turn_on', seat.sw, { want: true });
+  }
 
   // A-05 other actions
   /** @type {Record<string,string>} */
@@ -403,17 +410,26 @@
           {@const on = switchOn(seat.key, seat.sw)}
           {@const na = unavailable(s(seat.sw))}
           {@const lvl = s(seat.lvl)}
-          {@const opts = seatOptions(seat.lvl)}
-          <div class="seat" class:on>
-            <button class="seat-btn" disabled={na || busy(seat.key)} onclick={() => toggleSwitch(seat.key, seat.sw)}>
-              <span class="seat-ic">{#if busy(seat.key)}<span class="spinner"></span>{:else}<Icon path={mdiCarSeatHeater} size={26} />{/if}</span>
-              <span class="col"><b>{seat.label}</b><span class="tiny muted">{na ? 'Niet beschikbaar' : busy(seat.key) ? 'Wacht op auto…' : on ? 'Aan' : 'Uit'}</span></span>
-            </button>
-            {#if lvl && !unavailable(lvl) && opts.length}
-              <Segmented size="sm" options={opts} value={want(seat.key + 'L', lvl.state)} disabled={busy(seat.key + 'L')}
-                onchange={(v) => send(seat.key + 'L', 'select', 'select_option', seat.lvl, { data: { option: v }, want: v })} />
-            {/if}
-          </div>
+          {@const opts = seatOptions(seat.lvl).filter((o) => String(o.value).toLowerCase() !== 'off')}
+          {@const value = on ? (lvl && !unavailable(lvl) ? want(seat.key + 'L', lvl.state) : 'on') : 'off'}
+          {@const working = busy(seat.key) || busy(seat.key + 'L')}
+          <label class="seat" class:on>
+            <span class="seat-ic">{#if working}<span class="spinner"></span>{:else}<Icon path={mdiCarSeatHeater} size={26} />{/if}</span>
+            <span class="col grow" style="min-width:0">
+              <b>{seat.label}</b>
+              <span class="seat-sel">
+                <select class="input" {value} disabled={na || working} onchange={(e) => setSeat(seat, e.currentTarget.value)} aria-label="Stoelverwarming {seat.label}">
+                  <option value="off">Uit</option>
+                  {#if opts.length && lvl && !unavailable(lvl)}
+                    {#each opts as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
+                  {:else}
+                    <option value="on">Aan</option>
+                  {/if}
+                </select>
+              </span>
+              {#if na || working}<span class="tiny muted">{na ? 'Niet beschikbaar' : 'Wacht op auto…'}</span>{/if}
+            </span>
+          </label>
         {/each}
       </div>
     </Card>
@@ -602,12 +618,11 @@
   .heatwave { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: linear-gradient(90deg, transparent, #38bdf8, transparent); background-size: 200% 100%; animation: shimmer 1.6s linear infinite; }
   .seat-title { margin-top: 16px; }
   .seats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .seat { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 16px; background: var(--surface-2); transition: background 0.4s; min-width: 0; }
+  .seat { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 16px; background: var(--surface-2); transition: background 0.4s; min-width: 0; }
+  .seat b { line-height: 1.2; }
+  .seat-sel select { width: 100%; margin-top: 4px; padding: 8px 28px 8px 10px; font-size: 0.9rem; text-overflow: ellipsis; background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%; }
   .seat.on { background: color-mix(in srgb, var(--heat) 14%, var(--surface-2)); }
-  .seat-btn { display: flex; align-items: center; gap: 10px; min-height: 48px; background: none; border: 0; color: var(--text); font: inherit; text-align: left; cursor: pointer; padding: 0; transition: transform 0.2s var(--spring); }
-  .seat-btn:active { transform: scale(0.95); }
-  .seat-btn:disabled { opacity: 0.6; cursor: default; }
-  .seat-ic { width: 44px; height: 44px; flex: none; border-radius: 14px; display: grid; place-items: center; background: var(--surface-3); color: var(--text-2); transition: background 0.4s, color 0.4s, box-shadow 0.4s, transform 0.4s var(--spring); }
+  .seat-ic { width: 38px; height: 38px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--surface-3); color: var(--text-2); transition: background 0.4s, color 0.4s, box-shadow 0.4s, transform 0.4s var(--spring); }
   .seat.on .seat-ic { background: var(--heat); color: #fff; box-shadow: 0 6px 18px -4px var(--heat); transform: rotate(-6deg); }
   .seat.on .seat-ic :global(svg) { animation: float 1.6s ease-in-out infinite; }
 

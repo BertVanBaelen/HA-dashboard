@@ -6,6 +6,7 @@
   import Toggle from '../components/Toggle.svelte';
   import Segmented from '../components/Segmented.svelte';
   import Row from './Row.svelte';
+  import CalendarColorRow from './CalendarColorRow.svelte';
 
   const calendars = $derived(Object.values($states).filter((s) => s.entity_id.startsWith('calendar.')).sort((a, b) => name(a).localeCompare(name(b))));
   const tabs = $derived($prefs.tabs.map((t) => ({ ...t, meta: TABS.find((x) => x.id === t.id) })).filter((t) => t.meta));
@@ -28,6 +29,7 @@
     on ? set.add(id) : set.delete(id);
     savePrefs({ calendars: [...set] });
   }
+  let colorOpen = $state(/** @type {string|null} */ (null));
   function setWelcome(patch) {
     savePrefs({ welcome: { ...$prefs.welcome, ...patch } });
   }
@@ -85,14 +87,18 @@
 <h4 class="section-title">Mijn agenda's</h4>
 <div class="group list">
   {#each calendars as c (c.entity_id)}
-    <div class="tabrow">
-      <span class="tic"><Icon name="calendar" size={20} /></span>
-      <span class="grow ellipsis">{name(c)}</span>
-      <Toggle checked={$prefs.calendars.includes(c.entity_id)} onchange={(v) => toggleCalendar(c.entity_id, v)} />
-    </div>
+    <CalendarColorRow
+      id={c.entity_id}
+      label={name(c)}
+      checked={$prefs.calendars.includes(c.entity_id)}
+      onchange={(v) => toggleCalendar(c.entity_id, v)}
+      open={colorOpen === c.entity_id}
+      ontoggleopen={() => (colorOpen = colorOpen === c.entity_id ? null : c.entity_id)}
+    />
   {:else}
     <p class="muted small">Geen agenda's gevonden.</p>
   {/each}
+  {#if calendars.length}<p class="tiny faint calnote">Tik op een kleur om ze aan te passen. Kleuren gelden voor iedereen.</p>{/if}
 </div>
 
 <h4 class="section-title">Welkom thuis</h4>
@@ -147,6 +153,7 @@
   .list { gap: 2px; padding: 6px; }
   .tabrow { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 12px; transition: opacity 0.3s; }
   .tabrow.hidden { opacity: 0.55; }
+  .calnote { padding: 6px 8px 2px; margin: 0; }
   .tic { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex-shrink: 0; }
   .btn.sm.icon { padding: 6px; }
   .accents { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }

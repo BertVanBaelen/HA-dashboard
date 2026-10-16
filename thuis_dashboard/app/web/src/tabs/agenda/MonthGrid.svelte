@@ -1,6 +1,9 @@
 <script>
   import { isSameDay, startOfDay } from '../../lib/format.js';
-  import { dayKey } from './util.js';
+  import { scale, fade } from 'svelte/transition';
+  import { household } from '../../lib/api.js';
+  import { colorFor } from '../../lib/colors.js';
+  import { dayKey, evKey } from './util.js';
 
   /** @type {{ days: Date[], month: number, byDay: Map<string, any[]>, selected?: Date|null, onpick: (d: Date) => void }} */
   let { days, month, byDay, selected = null, onpick } = $props();
@@ -9,7 +12,10 @@
 
   function dots(list) {
     const seen = [];
-    for (const e of list) if (!seen.includes(e.color)) seen.push(e.color);
+    for (const e of list) {
+      const c = colorFor(e.calendar, $household);
+      if (!seen.includes(c)) seen.push(c);
+    }
     return seen;
   }
 </script>
@@ -30,11 +36,11 @@
     >
       <span class="n num">{d.getDate()}</span>
       <span class="dots">
-        {#each cols.slice(0, 4) as c, i}<i style="--c:{c};--d:{i * 40}ms"></i>{/each}
+        {#each cols.slice(0, 4) as c, i (c)}<i style="--c:{c};--d:{i * 40}ms" out:scale={{ duration: 200 }}></i>{/each}
         {#if cols.length > 4}<span class="more">+</span>{/if}
       </span>
       <span class="titles">
-        {#each list.slice(0, 3) as e}<span class="t ellipsis" style="--c:{e.color}">{e.summary}</span>{/each}
+        {#each list.slice(0, 3) as e (evKey(e))}<span class="t ellipsis" style="--c:{colorFor(e.calendar, $household)}" in:fade={{ duration: 260 }}>{e.summary}</span>{/each}
         {#if list.length > 3}<span class="tiny faint">+{list.length - 3} meer</span>{/if}
       </span>
     </button>

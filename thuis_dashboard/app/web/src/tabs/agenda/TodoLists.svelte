@@ -22,7 +22,7 @@
   let sel = $state(sessionStorage.getItem(LKEY));
   const current = $derived(sel && lists.includes(sel) ? sel : lists[0]);
   const cur = $derived(current ? $states[current] : null);
-  const color = $derived(current ? colorFor(current) : 'var(--accent)');
+  const color = $derived(current ? colorFor(current, $household) : 'var(--accent)');
 
   let items = $state(/** @type {Record<string, any[]>} */ ({}));
   let celebrating = $state(/** @type {string[]} */ ([]));
@@ -167,7 +167,7 @@
       <div class="chips no-swipe">
         {#each lists as id (id)}
           {@const n = count(id)}
-          <Chip icon={icon(id)} label={name($states[id]) || id} color={colorFor(id)} active={id === current} onclick={() => pick(id)}>
+          <Chip icon={icon(id)} label={name($states[id]) || id} color={colorFor(id, $household)} active={id === current} onclick={() => pick(id)}>
             {#key n}<span class="cnt" class:zero={n === 0}>{n}</span>{/key}
           </Chip>
         {/each}

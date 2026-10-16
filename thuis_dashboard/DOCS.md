@@ -24,6 +24,19 @@ staan onder **Huishouden**.
 Koppel elke HA-gebruiker aan zijn `person.*` (Instellingen → Personen → gebruiker kiezen),
 anders werken Welkom thuis en aankomstmeldingen niet.
 
+## Dashboard als startpagina
+
+Home Assistant kan een app (Ingress-paneel) niet rechtstreeks als standaard dashboard kiezen.
+Daarom: ⚙️ **Instellingen → Persoonlijk → Startpagina → Zet als startpagina**. Dit maakt
+(eenmalig) een verborgen dashboard **Thuis Start** aan met een kaartje dat meteen
+doorverwijst naar dit dashboard (bestand in `/config/www/thuis_dashboard/redirect.js`).
+Kies daarna in je HA-**profiel → Dashboard → Standaard dashboard** voor **Thuis Start**.
+Dit is per gebruiker/toestel, dus doe het ook in de Companion app van de ander.
+Om Thuis Start zelf te bewerken: open het met `?edit=1` in de URL.
+
+Hiervoor heeft de app schrijftoegang tot de HA-configmap (`homeassistant_config`) en moet de
+gebruiker die op de knop drukt beheerder zijn.
+
 ## Benodigde scripts in Home Assistant
 
 Het dashboard roept deze scripts aan. Maak ze aan (Instellingen → Automatiseringen → Scripts)

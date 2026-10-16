@@ -1,6 +1,7 @@
 <script>
   import { mdiClockOutline, mdiMapMarkerOutline, mdiTextBoxOutline, mdiCalendarBlankOutline } from '@mdi/js';
-  import { states, name } from '../../lib/api.js';
+  import { states, household, name } from '../../lib/api.js';
+  import { colorFor } from '../../lib/colors.js';
   import Sheet from '../../components/Sheet.svelte';
   import Icon from '../../components/Icon.svelte';
   import { fmtRange } from './util.js';
@@ -22,7 +23,7 @@
 
 <Sheet bind:open title={event?.summary ?? ''}>
   {#if event}
-    <div class="detail" style="--c:{event.color}">
+    <div class="detail" style="--c:{colorFor(event.calendar, $household)}">
       <div class="hero">
         <span class="ic"><Icon path={mdiCalendarBlankOutline} size={26} /></span>
         <div class="col" style="gap:2px;min-width:0">

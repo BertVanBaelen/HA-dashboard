@@ -1,7 +1,7 @@
 <script>
   import { fly, fade, scale } from 'svelte/transition';
   import { mdiTelevision, mdiSpeaker, mdiPower, mdiSofaOutline } from '@mdi/js';
-  import { MEDIA } from '$shared/config.js';
+  import { MEDIA, tvIsOn } from '$shared/config.js';
   import { states, action, isOn } from '../lib/api.js';
   import Segmented from '../components/Segmented.svelte';
   import Icon from '../components/Icon.svelte';
@@ -12,7 +12,7 @@
   const LABELS = { tv: 'TV', stereo: 'Stereo', uit: 'Uit' };
   const COLORS = { tv: '#6366f1', stereo: '#ec4899', uit: '#64748b' };
 
-  const tvOn = $derived(isOn($states[MEDIA.tvActive]));
+  const tvOn = $derived(tvIsOn((id) => $states[id]));
   const stereoOn = $derived(isOn($states[MEDIA.stereoActive]));
   const liveMode = $derived(tvOn ? 'tv' : stereoOn ? 'stereo' : 'uit');
 

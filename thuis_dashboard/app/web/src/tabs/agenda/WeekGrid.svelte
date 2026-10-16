@@ -1,7 +1,9 @@
 <script>
   import { onMount } from 'svelte';
   import { isSameDay, startOfDay, fmtTime } from '../../lib/format.js';
-  import { addDays, dayKey } from './util.js';
+  import { addDays, dayKey, evKey } from './util.js';
+  import { household } from '../../lib/api.js';
+  import { colorFor } from '../../lib/colors.js';
 
   /** @type {{ start: Date, byDay: Map<string, any[]>, onopen: (e: any) => void, onday?: (d: Date) => void }} */
   let { start, byDay, onopen, onday } = $props();
@@ -74,8 +76,8 @@
       <span class="tiny faint gut">dag</span>
       {#each allDay as list, i (i)}
         <div class="adc">
-          {#each list as e}
-            <button class="ad ellipsis" style="--c:{e.color}" onclick={() => onopen(e)}>{e.summary}</button>
+          {#each list as e (evKey(e))}
+            <button class="ad ellipsis" style="--c:{colorFor(e.calendar, $household)}" onclick={() => onopen(e)}>{e.summary}</button>
           {/each}
         </div>
       {/each}
@@ -88,10 +90,10 @@
       </div>
       {#each days as d, i (d.getTime())}
         <div class="col7" class:today={isSameDay(d, now)}>
-          {#each blocks[i] as b (b.e.uid ?? `${b.e.calendar}${b.e.start.getTime()}${b.e.summary}`)}
+          {#each blocks[i] as b (evKey(b.e))}
             <button
               class="blk"
-              style="--c:{b.e.color};top:{b.top}px;height:{b.height}px;left:calc({(b.lane / b.n) * 100}% + 1px);width:calc({100 / b.n}% - 2px)"
+              style="--c:{colorFor(b.e.calendar, $household)};top:{b.top}px;height:{b.height}px;left:calc({(b.lane / b.n) * 100}% + 1px);width:calc({100 / b.n}% - 2px)"
               onclick={() => onopen(b.e)}
               title={`${fmtTime(b.e.start)} ${b.e.summary}`}
             >
@@ -119,6 +121,7 @@
   .ad {
     border: 0; cursor: pointer; font-size: 0.68rem; font-weight: 700; padding: 3px 4px; border-radius: 6px; text-align: left;
     background: color-mix(in srgb, var(--c) 22%, var(--surface-2)); border-left: 3px solid var(--c); color: var(--text); display: block;
+    animation: fade-up 0.35s var(--ease) both;
   }
   .scroll { max-height: 460px; overflow-y: auto; overscroll-behavior: contain; border-radius: var(--radius-sm); }
   .body { position: relative; }

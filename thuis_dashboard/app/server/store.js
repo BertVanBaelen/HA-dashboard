@@ -19,6 +19,7 @@ export function defaultUserPrefs() {
 export function defaultHousehold() {
   return {
     sharedCalendars: [],
+    calendarColors: {},
     lists: ['todo.shopping_list', 'todo.cleaning_day'],
     presets: structuredClone(DEFAULT_PRESETS),
     comfort: { ...DEFAULT_COMFORT },
@@ -48,6 +49,7 @@ function normalizeHousehold(h) {
     comfort: { ...d.comfort, ...(h?.comfort ?? {}) },
     sensorLabels: { ...d.sensorLabels, ...(h?.sensorLabels ?? {}) },
     carFlags: { ...d.carFlags, ...(h?.carFlags ?? {}) },
+    calendarColors: { ...(h?.calendarColors ?? {}) },
   };
 }
 
@@ -55,7 +57,7 @@ export class Store {
   constructor(file, log = console) {
     this.file = file;
     this.log = log;
-    this.data = { version: SCHEMA_VERSION, users: {}, household: defaultHousehold() };
+    this.data = { version: SCHEMA_VERSION, users: {}, profiles: {}, household: defaultHousehold() };
     this.writing = Promise.resolve();
   }
 
@@ -65,6 +67,7 @@ export class Store {
       this.data = {
         version: SCHEMA_VERSION,
         users: Object.fromEntries(Object.entries(raw.users ?? {}).map(([k, v]) => [k, normalizeUser(v)])),
+        profiles: raw.profiles ?? {},
         household: normalizeHousehold(raw.household),
       };
       this.log.info?.(`[store] loaded ${Object.keys(this.data.users).length} user(s)`);
@@ -91,6 +94,21 @@ export class Store {
 
   allUsers() {
     return this.data.users;
+  }
+
+  /** Remember display name/person per user so others can see whose calendars they are. */
+  async setProfile(userId, profile) {
+    const old = this.data.profiles[userId];
+    if (old && old.displayName === profile.displayName && old.person === profile.person) return;
+    this.data.profiles[userId] = profile;
+    await this.save();
+  }
+
+  /** Other users and their chosen calendars. */
+  othersFor(userId) {
+    return Object.entries(this.data.users)
+      .filter(([id, p]) => id !== userId && p.calendars?.length && this.data.profiles[id])
+      .map(([id, p]) => ({ id, displayName: this.data.profiles[id].displayName, person: this.data.profiles[id].person ?? null, calendars: p.calendars }));
   }
 
   async setUser(userId, prefs) {

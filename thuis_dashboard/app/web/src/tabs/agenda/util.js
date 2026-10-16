@@ -77,3 +77,5 @@ export function swipe(node, opts) {
     },
   };
 }
+
+export const evKey = (e) => `${e.calendar}|${e.uid ?? ''}|${e.start.getTime()}|${e.summary}`;

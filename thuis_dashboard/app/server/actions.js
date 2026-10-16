@@ -1,4 +1,4 @@
-import { ALL_OFF, LIGHTS, MEDIA, PEOPLE, ROOMS } from '../shared/config.js';
+import { ALL_OFF, LIGHTS, MEDIA, PEOPLE, ROOMS, tvIsOn } from '../shared/config.js';
 
 const ARRIVAL_DEBOUNCE_MS = 30 * 60 * 1000;
 const HEAT_ACTION_PREFIX = 'DASH_HEAT_';
@@ -54,7 +54,7 @@ export class Actions {
   }
 
   async mediaMode(mode) {
-    const tvOn = this.isOn(MEDIA.tvActive);
+    const tvOn = tvIsOn((id) => this.ha.getState(id));
     const stereoOn = this.isOn(MEDIA.stereoActive);
     const s = MEDIA.scripts;
     if (mode === 'tv') {

@@ -7,7 +7,10 @@
   import { fmtTime, fmtDay, greeting, isSameDay, startOfDay } from '../lib/format.js';
   import { fetchEvents } from '../lib/calendar.js';
   import { goTab, openSettings } from '../lib/nav.js';
-  import { PERSON_COLORS } from '../lib/colors.js';
+  import { PERSON_COLORS, colorFor } from '../lib/colors.js';
+  import { mdiHanger } from '@mdi/js';
+  import RainChart from './home/RainChart.svelte';
+  import Outfit from './home/Outfit.svelte';
   import Card from '../components/Card.svelte';
   import Icon from '../components/Icon.svelte';
   import Tile from '../components/Tile.svelte';
@@ -20,6 +23,7 @@
   let events = $state(/** @type {any[]|null} */ (null));
   let busy = $state(/** @type {string|null} */ (null));
   let now = $state(new Date());
+  let forecastReady = $state(false);
 
   async function loadForecast() {
     try {
@@ -29,7 +33,10 @@
       ]);
       hourly = (h?.[HOME.weather]?.forecast ?? []).filter((f) => new Date(f.datetime) > new Date(Date.now() - 3600e3)).slice(0, 12);
       daily = (d?.[HOME.weather]?.forecast ?? []).slice(0, 5);
-    } catch {}
+    } catch {
+    } finally {
+      forecastReady = true;
+    }
   }
 
   async function loadEvents() {
@@ -83,6 +90,13 @@
   const listIcon = (id) => (id.includes('shopping') ? 'cart' : id.includes('clean') ? 'broom' : 'list');
   const cond = $derived(weather?.state ?? 'cloudy');
   const isNight = $derived($states['sun.sun']?.state === 'below_horizon');
+  const next5 = $derived(hourly.slice(0, 5));
+  const today = $derived(daily.find((d) => isSameDay(new Date(d.datetime), now)) ?? null);
+  const nowTemp = $derived.by(() => {
+    const o = Number(outdoor?.state);
+    if (outdoor && !Number.isNaN(o)) return o;
+    return weather?.attributes.temperature ?? null;
+  });
 </script>
 
 <div class="home stagger">
@@ -114,7 +128,7 @@
       </div>
       <div class="wx-meta small">
         {#if weather?.attributes.apparent_temperature != null}<span>Voelt als <b>{Math.round(weather.attributes.apparent_temperature)}°</b></span>{/if}
-        {#if outdoor}<span>Tado buiten <b>{num(outdoor)}°</b></span>{/if}
+        {#if outdoor}<span>Buiten <b>{num(outdoor)}°</b></span>{/if}
         {#if weather?.attributes.humidity != null}<span><Icon name="water" size={14} />{weather.attributes.humidity}%</span>{/if}
         {#if weather?.attributes.wind_speed != null}<span>💨 {Math.round(weather.attributes.wind_speed)} {weather.attributes.wind_speed_unit ?? 'km/h'}</span>{/if}
         {#if $states[HOME.sunRising]}<span>🌅 {fmtTime($states[HOME.sunRising].state)}</span>{/if}
@@ -133,6 +147,9 @@
         {/each}
       </div>
     {/if}
+    {#if next5.length}
+      <RainChart hours={next5} />
+    {/if}
     {#if daily.length}
       <div class="days">
         {#each daily as d, i (d.datetime)}
@@ -148,6 +165,22 @@
       </div>
     {/if}
   </Card>
+
+  {#if nowTemp != null && forecastReady}
+    <Card title="Wat trek je aan?" iconPath={mdiHanger}>
+      <Outfit
+        temp={nowTemp}
+        feel={weather?.attributes.apparent_temperature ?? null}
+        min={today?.templow ?? null}
+        max={today?.temperature ?? null}
+        rainMm={next5.reduce((a, h) => a + (Number(h.precipitation) || 0), 0)}
+        rainProb={Math.max(0, ...next5.map((h) => Number(h.precipitation_probability) || 0))}
+        wind={weather?.attributes.wind_speed ?? null}
+        uv={weather?.attributes.uv_index ?? null}
+        {cond}
+      />
+    </Card>
+  {/if}
 
   <div class="grid">
     <!-- H-03 who is home -->
@@ -194,7 +227,7 @@
       {:else}
         <div class="events">
           {#each events as e, i (e.calendar + e.start + e.summary)}
-            <div class="event" style="--ec:{e.color}" in:fly={{ y: 10, delay: i * 60 }}>
+            <div class="event" style="--ec:{colorFor(e.calendar, $household)}" in:fly={{ y: 10, delay: i * 60 }}>
               <span class="when small">
                 <b>{isSameDay(e.start, now) ? 'Vandaag' : 'Morgen'}</b>
                 <span class="muted">{e.allDay ? 'Hele dag' : fmtTime(e.start)}</span>

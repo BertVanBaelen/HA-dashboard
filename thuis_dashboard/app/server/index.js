@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { join, extname, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
@@ -7,7 +7,7 @@ import { HaClient } from './ha.js';
 import { MockHaClient, MOCK_USERS } from './mock.js';
 import { Store } from './store.js';
 import { Actions } from './actions.js';
-import { ALLOWED_SERVICES, ALLOWED_WS_COMMANDS, EXCLUDED_ENTITY_PATTERNS } from '../shared/config.js';
+import { ALLOWED_SERVICES, ALLOWED_WS_COMMANDS, EXCLUDED_ENTITY_PATTERNS, START_DASHBOARD } from '../shared/config.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const MOCK = process.argv.includes('--mock') || process.env.MOCK === '1';
@@ -127,11 +127,13 @@ function onClient(ws, user) {
   const client = { ws, user };
   clients.add(client);
   log.info(`[ws] ${user.displayName} connected (${clients.size} client(s))`);
+  store.setProfile(user.id, { displayName: user.displayName, person: actions.personForUser(user.id) });
   send(ws, {
     type: 'init',
     user: { ...user, person: actions.personForUser(user.id) },
     prefs: store.getUser(user.id),
     household: store.getHousehold(),
+    others: store.othersFor(user.id),
     states: publicStates(),
     haConnected: ha.connected,
     mock: MOCK,
@@ -177,6 +179,7 @@ async function handle(client, msg) {
     case 'set_prefs': {
       const prefs = await store.setUser(client.user.id, msg.prefs);
       broadcast({ type: 'prefs', prefs }, (c) => c.user.id === client.user.id);
+      for (const c of clients) if (c.user.id !== client.user.id) send(c.ws, { type: 'others', others: store.othersFor(c.user.id) });
       return prefs;
     }
     case 'set_household': {
@@ -202,6 +205,7 @@ async function runAction(client, name, args) {
     case 'selectStereoSource': return actions.selectStereoSource(args.key);
     case 'heatRoom': return actions.heatRoom(args.room);
     case 'searchRadios': return actions.searchRadios();
+    case 'setupStartDashboard': return setupStartDashboard();
     case 'testArrival': {
       const person = actions.personForUser(client.user.id);
       const s = person && ha.getState(person);
@@ -214,6 +218,42 @@ async function runAction(client, name, args) {
     }
     default: throw new Error(`Onbekende actie ${name}`);
   }
+}
+
+// ---- Start dashboard (redirect to this app) ---------------------------------
+
+const WWW_DIR = process.env.WWW_DIR ?? (MOCK ? join(here, '..', '.mock-data', 'www') : '/homeassistant/www');
+
+async function setupStartDashboard() {
+  const { urlPath, title, resource } = START_DASHBOARD;
+  const js = await readFile(join(here, 'start-redirect.js'));
+  const file = join(WWW_DIR, ...resource.replace(/^\/local\//, '').split('/'));
+  try {
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, js);
+  } catch (err) {
+    throw new Error(`Kon ${resource} niet schrijven (${err.code ?? err.message}). Herstart de app na een update.`);
+  }
+  const url = `${resource}?v=${Date.now().toString(36)}`;
+  try {
+    const resources = (await ha.send({ type: 'lovelace/resources' })) ?? [];
+    const existing = resources.find((r) => r.url?.split('?')[0] === resource);
+    if (existing) await ha.send({ type: 'lovelace/resources/update', resource_id: existing.id, res_type: 'module', url });
+    else await ha.send({ type: 'lovelace/resources/create', res_type: 'module', url });
+  } catch (err) {
+    throw new Error(`Resource registreren mislukt: ${err.message}. Staan je dashboard-resources in YAML-modus?`);
+  }
+  const dashboards = (await ha.send({ type: 'lovelace/dashboards/list' })) ?? [];
+  if (!dashboards.some((d) => d.url_path === urlPath)) {
+    await ha.send({ type: 'lovelace/dashboards/create', url_path: urlPath, title, icon: 'mdi:view-dashboard', show_in_sidebar: false, require_admin: false, mode: 'storage' });
+  }
+  await ha.send({
+    type: 'lovelace/config/save',
+    url_path: urlPath,
+    config: { title, views: [{ title: 'Start', path: 'start', panel: true, cards: [{ type: 'custom:thuis-dashboard-redirect' }] }] },
+  });
+  log.info(`[start] dashboard /${urlPath} ready`);
+  return { urlPath, title };
 }
 
 // ---- HA → clients ----------------------------------------------------------

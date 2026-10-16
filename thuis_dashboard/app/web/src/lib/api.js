@@ -11,6 +11,8 @@ export const states = writable({});
 export const user = writable(/** @type {{id:string,name:string,displayName:string,person:string|null}|null} */ (null));
 export const prefs = writable(/** @type {any} */ (null));
 export const household = writable(/** @type {any} */ (null));
+/** Other users and the calendars they selected. */
+export const others = writable(/** @type {{id:string,displayName:string,person:string|null,calendars:string[]}[]} */ ([]));
 export const toasts = writable(/** @type {{id:number,text:string,kind:string}[]} */ ([]));
 
 let ws;
@@ -49,6 +51,7 @@ export function connect() {
         user.set(msg.user);
         prefs.set(msg.prefs);
         household.set(msg.household);
+        others.set(msg.others ?? []);
         states.set(msg.states);
         haConnected.set(msg.haConnected);
         isMock.set(!!msg.mock);
@@ -76,6 +79,9 @@ export function connect() {
         break;
       case 'household':
         household.set(msg.household);
+        break;
+      case 'others':
+        others.set(msg.others ?? []);
         break;
       case 'result': {
         const p = pending.get(msg.id);

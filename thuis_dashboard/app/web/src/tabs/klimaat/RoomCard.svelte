@@ -1,16 +1,15 @@
 <script>
   import { onMount } from 'svelte';
-  import { slide, fly } from 'svelte/transition';
-  import { mdiFire, mdiCalendarClock, mdiPowerStandby, mdiRocketLaunch, mdiTimerOutline, mdiWindowOpenVariant, mdiWeatherSunsetUp, mdiHandBackRight, mdiThermometer, mdiWaterPercent } from '@mdi/js';
+  import { slide, fly, fade } from 'svelte/transition';
+  import { mdiFire, mdiCalendarClock, mdiPowerStandby, mdiRocketLaunch, mdiTimerOutline, mdiWindowOpenVariant, mdiWeatherSunsetUp, mdiHandBackRight, mdiChevronDown } from '@mdi/js';
   import { DEFAULT_COMFORT } from '$shared/config.js';
-  import { states, household, callService, isOn, unavailable, num, toast } from '../../lib/api.js';
+  import { states, household, callService, isOn, unavailable, toast } from '../../lib/api.js';
   import { fmtTime } from '../../lib/format.js';
   import Card from '../../components/Card.svelte';
   import Icon from '../../components/Icon.svelte';
   import Badge from '../../components/Badge.svelte';
-  import Stepper from '../../components/Stepper.svelte';
   import Segmented from '../../components/Segmented.svelte';
-  import TempGauge from './TempGauge.svelte';
+  import Knob from './Knob.svelte';
 
   /** @type {{ room: typeof import('$shared/config.js').ROOMS[number] }} */
   let { room } = $props();
@@ -42,14 +41,11 @@
   const maxT = $derived(toNum(a.max_temp) ?? 25);
   const step = $derived(toNum(a.target_temp_step) ?? 0.5);
 
-  const extraT = $derived(room.extraTemperature ? $states[room.extraTemperature] : null);
-  const extraH = $derived(room.extraHumidity ? $states[room.extraHumidity] : null);
-
   const modeOptions = $derived(
     [
-      { value: 'auto', label: 'Auto', iconPath: mdiCalendarClock, color: 'var(--accent)' },
-      { value: 'heat', label: 'Verwarmen', iconPath: mdiFire, color: 'var(--heat)' },
       { value: 'off', label: 'Uit', iconPath: mdiPowerStandby, color: '#64748b' },
+      { value: 'auto', label: 'Auto', iconPath: mdiCalendarClock, color: 'var(--accent)' },
+      { value: 'heat', label: 'Verwarm', iconPath: mdiFire, color: 'var(--heat)' },
     ].filter((o) => !a.hvac_modes || a.hvac_modes.includes(o.value)),
   );
 
@@ -63,6 +59,7 @@
   let boost = $state(/** @type {{key:string,until:number|null,since:number}|null} */ (null));
   let now = $state(Date.now());
   let resetBusy = $state(false);
+  let moreOpen = $state(false);
 
   onMount(() => {
     const t = setInterval(() => (now = Date.now()), 15e3);
@@ -159,60 +156,56 @@
     {#if windowOpen}
       <div class="window-alert" transition:slide>
         <span class="wiggle"><Icon path={mdiWindowOpenVariant} size={20} /></span>
-        <span>Raam open gedetecteerd – Tado pauzeert de verwarming</span>
+        <span>Raam open – verwarming gepauzeerd</span>
       </div>
     {/if}
 
-    <div class="gauge-wrap">
-      <TempGauge min={minT} max={maxT} {current} target={target} {off} {heating} disabled={na} label="{room.name} temperatuur" />
-      <div class="stats">
-        <div class="stat">
-          <Icon path={mdiWaterPercent} size={18} />
-          <span class="num">{humidityVal == null ? '–' : Math.round(humidityVal)}%</span>
-          <span class="tiny muted">Vochtigheid</span>
-        </div>
-        {#if extraT}
-          <div class="stat extra">
-            <Icon path={mdiThermometer} size={18} />
-            <span class="num">{num(extraT)}°{#if extraH}<span class="faint"> · {num(extraH, 0)}%</span>{/if}</span>
-            <span class="tiny muted">Sensor kamer</span>
-          </div>
-        {/if}
-      </div>
-    </div>
-
-    <div class="ctrl">
-      <div class="label-row">
-        <span class="section-title" style="margin:0">Doeltemperatuur</span>
-        {#if off}<span class="tiny muted">Instellen zet verwarming aan</span>{/if}
-      </div>
-      <Stepper value={off ? comfort : (target ?? comfort)} {step} min={toNum(a.min_temp) ?? 5} max={maxT} disabled={na} onchange={setTemp} debounce={1000} />
+    <div class="knob-area">
+      <Knob
+        value={off ? comfort : (target ?? comfort)}
+        min={minT}
+        max={maxT}
+        {step}
+        {current}
+        humidity={humidityVal}
+        {off}
+        {heating}
+        disabled={na}
+        label="{room.name} doeltemperatuur"
+        onchange={setTemp}
+      />
+      <div class="hint tiny muted">{off ? 'Draai om de verwarming aan te zetten' : 'Draai aan de knop om bij te stellen'}</div>
     </div>
 
     <Segmented options={modeOptions} value={shownMode} onchange={setMode} disabled={na} />
 
-    <div class="boost">
-      <div class="label-row">
-        <span class="section-title" style="margin:0"><Icon path={mdiRocketLaunch} size={13} style="display:inline;vertical-align:-2px" /> Boost naar {String(comfort).replace('.', ',')}°</span>
-      </div>
-      <div class="boost-row">
-        {#each BOOSTS as b (b.key)}
-          <button class="bchip" class:active={boost?.key === b.key} disabled={na || !!boostBusy} onclick={() => startBoost(b)}>
-            {#if boostBusy === b.key}<span class="spinner"></span>{:else}<Icon path={b.min ? mdiTimerOutline : mdiWeatherSunsetUp} size={16} />{/if}
-            <span>{b.label}</span>
+    <div class="more" class:open={moreOpen}>
+      <button class="more-btn" aria-expanded={moreOpen} onclick={() => (moreOpen = !moreOpen)}>
+        <Icon path={mdiRocketLaunch} size={17} />
+        <span class="grow">Boost &amp; schema</span>
+        {#if (manual || boost) && !moreOpen}<span class="dot" transition:fade={{ duration: 200 }}></span>{/if}
+        <span class="chev"><Icon path={mdiChevronDown} size={20} /></span>
+      </button>
+      {#if moreOpen}
+        <div class="more-body" transition:slide={{ duration: 320 }}>
+          <div class="label-row">
+            <span class="section-title" style="margin:0">Boost naar {String(comfort).replace('.', ',')}°</span>
+          </div>
+          <div class="boost-row">
+            {#each BOOSTS as b, i (b.key)}
+              <button class="bchip" class:active={boost?.key === b.key} disabled={na || !!boostBusy} onclick={() => startBoost(b)} in:fly={{ y: 10, delay: 60 + i * 50, duration: 280 }}>
+                {#if boostBusy === b.key}<span class="spinner"></span>{:else}<Icon path={b.min ? mdiTimerOutline : mdiWeatherSunsetUp} size={16} />{/if}
+                <span>{b.label}</span>
+              </button>
+            {/each}
+          </div>
+          <button class="btn soft block reset" disabled={resetBusy || na || !manual} onclick={backToSchedule}>
+            {#if resetBusy}<span class="spinner"></span>{:else}<Icon path={mdiHandBackRight} size={18} />{/if}
+            {manual ? 'Terug naar schema' : 'Volgt al het schema'}
           </button>
-        {/each}
-      </div>
+        </div>
+      {/if}
     </div>
-
-    {#if manual}
-      <div transition:slide>
-        <button class="btn soft block reset" disabled={resetBusy} onclick={backToSchedule}>
-          {#if resetBusy}<span class="spinner"></span>{:else}<Icon path={mdiHandBackRight} size={18} />{/if}
-          Terug naar schema
-        </button>
-      </div>
-    {/if}
   </div>
 </Card>
 
@@ -239,24 +232,25 @@
   }
   .wiggle { display: inline-block; animation: wiggle 1.4s ease-in-out infinite; }
 
-  .gauge-wrap { position: relative; display: flex; flex-direction: column; align-items: center; }
-  .gauge-wrap :global(.gauge) { margin-bottom: -18px; }
-  .stats { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; position: relative; }
-  .stat {
-    display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 14px; border-radius: 14px; min-width: 96px;
-    background: var(--surface-2); color: var(--info); font-weight: 700;
-  }
-  .stat .num { color: var(--text); }
-  .stat.extra { color: var(--accent); }
-
-  .ctrl { display: flex; flex-direction: column; gap: 6px; }
+  .knob-area { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 4px; }
+  .hint { text-align: center; }
   .label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 
-  .boost { display: flex; flex-direction: column; gap: 8px; }
+  .more { border-radius: 16px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; transition: background 0.3s; }
+  .more-btn {
+    width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 14px; min-height: 46px; border: 0; background: none;
+    color: var(--text-2); font: inherit; font-weight: 700; font-size: 0.9rem; cursor: pointer; text-align: left;
+  }
+  .more-btn:active { background: var(--surface-3); }
+  .more.open .more-btn { color: var(--text); }
+  .chev { display: grid; transition: transform 0.35s var(--spring); }
+  .more.open .chev { transform: rotate(180deg); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  .more-body { display: flex; flex-direction: column; gap: 10px; padding: 0 12px 12px; }
   .boost-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
   .bchip {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; padding: 6px 4px;
-    border-radius: 14px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); font-weight: 700; font-size: 0.78rem;
+    border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); font-weight: 700; font-size: 0.78rem;
     cursor: pointer; transition: transform 0.2s var(--spring), background 0.3s, color 0.3s, box-shadow 0.3s;
   }
   .bchip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }

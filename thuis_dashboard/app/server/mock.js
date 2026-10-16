@@ -189,8 +189,8 @@ export class MockHaClient extends EventEmitter {
     }
     if (domain === 'todo') return this.#todo(service, ids[0], data);
     if (domain === 'script' && service !== 'turn_on') {
-      if (service === 'tv_aan') { this.#set('input_boolean.tv_actief', 'on'); this.#set('media_player.chromecast_hd', 'idle'); }
-      if (service === 'tv_uit') { this.#set('input_boolean.tv_actief', 'off'); this.#set('media_player.chromecast_hd', 'off'); }
+      if (service === 'tv_aan') { this.#set('input_boolean.tv_actief', 'on'); this.#set('remote.chromecast_hd', 'on'); this.#set('media_player.chromecast_hd', 'idle'); }
+      if (service === 'tv_uit') { this.#set('input_boolean.tv_actief', 'off'); this.#set('remote.chromecast_hd', 'off'); this.#set('media_player.chromecast_hd', 'off'); }
       if (service === 'stereo_aan') { this.#set('input_boolean.stereo_actief', 'on'); this.#set('media_player.living_room_stereo', 'playing', { media_title: 'Studio Brussel' }); }
       if (service === 'stereo_uit') { this.#set('input_boolean.stereo_actief', 'off'); this.#set('media_player.living_room_stereo', 'off'); }
       return {};
@@ -222,6 +222,24 @@ export class MockHaClient extends EventEmitter {
     const out = [];
     const step = type === 'hourly' ? 3600e3 : 86400e3;
     const n = type === 'hourly' ? 24 : 7;
+    if (type === 'hourly') {
+      const start = new Date();
+      start.setMinutes(0, 0, 0);
+      const shower = [0, 0, 0.2, 1.4, 2.6, 0.8, 0, 0, 0, 0.4, 1.1, 0, 0, 0, 0, 0, 3.2, 1.9, 0.3, 0, 0, 0, 0, 0];
+      for (let i = 0; i < n; i++) {
+        const mm = shower[i] ? Number((shower[i] * rand(0.7, 1.3, 2)).toFixed(1)) : 0;
+        const t = new Date(start.getTime() + i * step);
+        out.push({
+          datetime: t.toISOString(),
+          condition: mm >= 2 ? 'pouring' : mm > 0 ? 'rainy' : i % 5 === 0 ? 'sunny' : 'partlycloudy',
+          temperature: Number((13 + 4 * Math.sin(((t.getHours() - 9) / 24) * 2 * Math.PI) + rand(-0.5, 0.5)).toFixed(1)),
+          precipitation: mm,
+          precipitation_probability: mm ? rand(45, 95, 0) : rand(0, 15, 0),
+          wind_speed: rand(8, 30),
+        });
+      }
+      return Object.fromEntries(ids.map((id) => [id, { forecast: out }]));
+    }
     for (let i = 0; i < n; i++) {
       out.push({
         datetime: new Date(Date.now() + i * step).toISOString(),
@@ -265,6 +283,8 @@ export class MockHaClient extends EventEmitter {
   }
 
   async send(msg) {
+    if (msg.type === 'lovelace/resources' || msg.type === 'lovelace/dashboards/list') return [];
+    if (msg.type.startsWith('lovelace/')) return null;
     if (msg.type === 'todo/item/list') return { items: this.todos[msg.entity_id] ?? [] };
     if (msg.type === 'history/history_during_period') {
       const start = new Date(msg.start_time).getTime();

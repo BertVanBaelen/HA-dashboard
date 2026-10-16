@@ -1,5 +1,6 @@
 <script>
-  import { states, name } from '../../lib/api.js';
+  import { states, household, name } from '../../lib/api.js';
+  import { colorFor } from '../../lib/colors.js';
   import { fmtTime } from '../../lib/format.js';
 
   /** @type {{ e: any, onclick?: () => void }} */
@@ -7,7 +8,7 @@
   const cal = $derived(name($states[e.calendar]) || e.calendar);
 </script>
 
-<button class="ev" style="--c:{e.color}" {onclick}>
+<button class="ev" style="--c:{colorFor(e.calendar, $household)}" {onclick}>
   <span class="bar"></span>
   <span class="time num">
     {#if e.allDay}<span class="small">Hele dag</span>{:else}<b>{fmtTime(e.start)}</b><span class="tiny faint">{fmtTime(e.end)}</span>{/if}

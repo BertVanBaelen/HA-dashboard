@@ -1,7 +1,7 @@
 import {
   mdiSofaOutline, mdiBedOutline, mdiShowerHead, mdiWeatherPartlyCloudy, mdiRadiator, mdiBatteryCharging60,
   mdiThermometer, mdiFlash, mdiSpeedometer, mdiSpeedometerSlow, mdiMapMarkerDistance, mdiEvStation,
-  mdiCellphone, mdiTablet, mdiAccessPointNetwork,
+  mdiCellphone, mdiAccessPointNetwork,
 } from '@mdi/js';
 import { ROOMS, HOME, CAR_ENTITIES as CAR, PEOPLE, DOOR_SENSORS } from '$shared/config.js';
 import { PERSON_COLORS } from '../../lib/colors.js';
@@ -20,8 +20,7 @@ export function klimaatCharts() {
     defaultRange: '24u',
     axes: { y: { unit: '°C' }, y2: { unit: '%', digits: 0 } },
     series: [
-      { entity: r.temperature, label: r.extraTemperature ? 'Tado' : 'Temperatuur', color: '--accent', type: 'area' },
-      r.extraTemperature && { entity: r.extraTemperature, label: 'Kamersensor', color: '--accent-3' },
+      { entity: r.temperature, label: 'Temperatuur', color: '--accent', type: 'area' },
       { entity: r.climate, attr: 'temperature', label: 'Setpoint', color: '--heat', type: 'step', dash: true, unit: '°C' },
       { entity: r.humidity, label: 'Vochtigheid', color: '--info', axis: 'y2', digits: 0 },
     ].filter(Boolean),
@@ -34,8 +33,11 @@ export function klimaatCharts() {
       iconPath: mdiWeatherPartlyCloudy,
       accent: 'var(--cool)',
       defaultRange: '7d',
-      axes: { y: { unit: '°C' } },
-      series: [{ entity: HOME.outdoorTemperature, label: 'Buiten', color: '--cool', type: 'area' }],
+      axes: { y: { unit: '°C' }, y2: { unit: '%', range: [0, 100], digits: 0 } },
+      series: [
+        { entity: HOME.outdoorTemperature, label: 'Buiten', color: '--cool', type: 'area' },
+        { entity: HOME.solar, label: 'Zon', color: '#f59e0b', axis: 'y2', digits: 0 },
+      ],
     },
     {
       id: 'heating',
@@ -144,19 +146,11 @@ export function batterijCharts(labels, friendly) {
   return [
     {
       id: 'bat-phones',
-      title: 'Telefoons',
+      title: 'Persoonlijke toestellen',
       iconPath: mdiCellphone,
       defaultRange: '24u',
       axes: { y: PCT },
-      series: PEOPLE.map((p) => ({ entity: p.battery, label: p.name, color: PERSON_COLORS[p.key] ?? '--accent', digits: 0 })),
-    },
-    {
-      id: 'bat-tablet',
-      title: 'Tablet',
-      iconPath: mdiTablet,
-      defaultRange: '24u',
-      axes: { y: PCT },
-      series: [{ entity: 'sensor.tablet_battery_level', label: 'Tablet', color: '--accent', type: 'area', digits: 0 }],
+      series: PEOPLE.map((p, i) => ({ entity: p.battery, label: p.name, color: PERSON_COLORS[p.key] ?? '--accent', type: i === 0 ? 'area' : undefined, digits: 0 })),
     },
     {
       id: 'bat-sensors',

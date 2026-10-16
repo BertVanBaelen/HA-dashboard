@@ -3,6 +3,7 @@
   import Segmented from '../components/Segmented.svelte';
   import Personal from './Personal.svelte';
   import Household from './Household.svelte';
+  import StartPage from './StartPage.svelte';
   let section = $state('persoonlijk');
 </script>
 
@@ -17,7 +18,7 @@
   />
   {#key section}
     <div in:fly={{ x: section === 'persoonlijk' ? -30 : 30, duration: 350 }}>
-      {#if section === 'persoonlijk'}<Personal />{:else}<Household />{/if}
+      {#if section === 'persoonlijk'}<Personal /><StartPage />{:else}<Household />{/if}
     </div>
   {/key}
 </div>

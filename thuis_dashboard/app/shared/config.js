@@ -52,8 +52,8 @@ export const ROOMS = [
     window: 'binary_sensor.slaapkamer_slaapkamer_window',
     earlyStart: 'binary_sensor.slaapkamer_slaapkamer_early_start',
     overlay: 'binary_sensor.slaapkamer_slaapkamer_overlay',
-    extraTemperature: 'sensor.bedroom_sensor_kamer_temperature',
-    extraHumidity: 'sensor.bedroom_sensor_kamer_humidity',
+    extraTemperature: null,
+    extraHumidity: null,
   },
   {
     key: 'badkamer',
@@ -77,6 +77,7 @@ export const HOME = {
   sunRising: 'sensor.sun_next_rising',
   sunSetting: 'sensor.sun_next_setting',
   zone: 'zone.home',
+  sun: 'sun.sun',
   tadoMode: 'sensor.thuis_tado_mode',
   geofencingMode: 'sensor.thuis_geofencing_mode',
   automaticGeofencing: 'sensor.thuis_automatic_geofencing',
@@ -140,6 +141,20 @@ export const MEDIA = {
     { key: 'vrtmax', label: 'VRT MAX', activity: 'https://www.vrt.be/vrtmax/' },
   ],
 };
+
+const UNAVAILABLE = ['unavailable', 'unknown', undefined];
+/**
+ * TV status follows the Chromecast: the Android TV remote entity is 'on' while the
+ * device is awake, the cast media player is playing/paused/idle while an app runs.
+ * Falls back to the input_boolean only when both Chromecast entities are unavailable.
+ * @param {(id: string) => ({ state: string } | null | undefined)} getState
+ */
+export function tvIsOn(getState) {
+  const remote = getState(MEDIA.chromecastRemote)?.state;
+  const cast = getState(MEDIA.chromecast)?.state;
+  if (UNAVAILABLE.includes(remote) && UNAVAILABLE.includes(cast)) return getState(MEDIA.tvActive)?.state === 'on';
+  return remote === 'on' || ['playing', 'paused', 'idle', 'buffering', 'on'].includes(cast);
+}
 
 export const DEFAULT_RADIOS = [
   { id: 'vrtnws', name: 'VRT NWS', url: 'http://icecast.vrtcdn.be/vrtnws-high.mp3' },
@@ -242,6 +257,13 @@ export const TABS = [
   { id: 'systeem', label: 'Systeem', icon: 'cog' },
   { id: 'grafieken', label: 'Grafieken', icon: 'chart' },
 ];
+
+// Lovelace dashboard that redirects to this app (so it can be the HA default dashboard)
+export const START_DASHBOARD = {
+  urlPath: 'thuis-start',
+  title: 'Thuis Start',
+  resource: '/local/thuis_dashboard/redirect.js',
+};
 
 export const ACCENTS = [
   { key: 'blauw', label: 'Blauw', color: '#3b82f6' },
