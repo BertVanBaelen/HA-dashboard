@@ -6,7 +6,7 @@
     mdiMapMarkerDistance, mdiEvStation, mdiPower, mdiCarDefrostFront, mdiCarDefrostRear, mdiCarSeatHeater, mdiSteering,
     mdiAccountTie, mdiSnowflakeMelt, mdiFan, mdiThermometer, mdiCarBack, mdiAlarmLight, mdiEvPlugType2, mdiPalmTree,
     mdiBatteryHeart, mdiCalendarClock, mdiCarTireAlert, mdiMapMarker, mdiGoogleMaps, mdiOpenInNew, mdiWindowOpenVariant,
-    mdiCounter, mdiAlertCircle, mdiCarConnected, mdiCurrentAc,
+    mdiCounter, mdiAlertCircle, mdiCarConnected, mdiCurrentAc, mdiGestureTap, mdiChartLine,
   } from '@mdi/js';
   import { CAR_ENTITIES as E, CAR_FLAGS } from '$shared/config.js';
   import { states, household, callService, toast, isOn, unavailable, num, attr } from '../lib/api.js';
@@ -23,6 +23,19 @@
   import BatteryRing from './auto/BatteryRing.svelte';
   import TyreView from './auto/TyreView.svelte';
   import TimeField from './auto/TimeField.svelte';
+  import AutoData from './auto/AutoData.svelte';
+
+  const VIEWS = [
+    { value: 'bediening', label: 'Bediening', iconPath: mdiGestureTap },
+    { value: 'data', label: 'Data', iconPath: mdiChartLine },
+  ];
+  const storedView = sessionStorage.getItem('auto.view');
+  let view = $state(VIEWS.some((v) => v.value === storedView) ? storedView : 'bediening');
+  /** @param {string} v */
+  function setView(v) {
+    view = v;
+    sessionStorage.setItem('auto.view', v);
+  }
 
   const WAIT_MS = 90e3;
   const BOOT = E.openings.find((o) => o.entity.endsWith('_boot_status'))?.entity ?? '';
@@ -225,7 +238,17 @@
   const amaps = $derived(`https://maps.apple.com/?ll=${lat},${lon}&q=MG4`);
 </script>
 
-<div class="auto stagger">
+<div class="auto-root">
+  <div class="views">
+    <Segmented options={VIEWS} value={view} onchange={setView} />
+  </div>
+
+{#if view === 'data'}
+  <div in:fly={{ y: 10, duration: 260 }}>
+    <AutoData />
+  </div>
+{:else}
+<div class="auto stagger" in:fly={{ y: 10, duration: 260 }}>
   <!-- A-01 Status header -->
   <Card class="hero {charging ? 'charging' : ''}" pad={false} accent={charging ? '#facc15' : '#14b8a6'}>
     <div class="hero-in">
@@ -549,14 +572,18 @@
     {/if}
   </div>
 </div>
+{/if}
+</div>
 
 <style>
-  .auto { display: flex; flex-direction: column; gap: var(--gap); padding-bottom: 10px; }
+  .auto-root { display: flex; flex-direction: column; gap: var(--gap); padding-bottom: 10px; }
+  .views { max-width: 420px; width: 100%; margin: 0 auto; }
+  .auto { display: flex; flex-direction: column; gap: var(--gap); }
 
   .hero-in { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
   h2 { font-size: 1.25rem; margin: 0; }
   .upd { gap: 4px; flex-wrap: wrap; }
-  .car-ic { width: 46px; height: 46px; flex: none; border-radius: 16px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #14b8a6, #0ea5e9); box-shadow: 0 8px 22px -8px #14b8a6; animation: float 4s ease-in-out infinite; transition: background 0.6s; }
+  .car-ic { width: 46px; height: 46px; flex: none; border-radius: 16px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #14b8a6, #0ea5e9); box-shadow: 0 8px 22px -8px #14b8a6; transition: background 0.6s; }
   :global(.card.hero.charging) .car-ic { background: linear-gradient(135deg, #facc15, #f97316); box-shadow: 0 8px 22px -6px #facc15; }
   .refresh { width: 44px; height: 44px; flex: none; }
   .ri { display: grid; place-items: center; }
@@ -570,7 +597,7 @@
   .pill { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; background: var(--surface-2); color: var(--text-2); animation: pop 0.4s var(--spring); }
   .pill.locked { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
   .pill.unlocked { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
-  .pill.charge { background: color-mix(in srgb, #facc15 22%, transparent); color: #ca8a04; animation: pop 0.4s var(--spring), charge-glow 1.8s ease-in-out infinite; }
+  .pill.charge { background: color-mix(in srgb, #facc15 22%, transparent); color: #ca8a04; animation: pop 0.4s var(--spring); }
   @keyframes charge-glow { 50% { box-shadow: 0 0 18px -2px color-mix(in srgb, #facc15 70%, transparent); } }
   .warnings { display: flex; flex-wrap: wrap; gap: 6px; }
   .warn-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 14px; font-weight: 700; font-size: 0.85rem; color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); animation: wiggle 0.6s ease-in-out 0.3s 2; }
@@ -613,7 +640,7 @@
   .clim-temps { gap: 8px; align-items: flex-start; }
   .fan { width: 70px; height: 70px; flex: none; border-radius: 22px; display: grid; place-items: center; background: var(--surface-2); color: var(--text-3); transition: background 0.5s, color 0.5s, box-shadow 0.5s; }
   .fan.on { color: #fff; background: linear-gradient(135deg, var(--heat), #f97316); box-shadow: 0 10px 26px -10px var(--heat); }
-  .fan.on :global(svg) { animation: spin 1.6s linear infinite; }
+  .fan.on :global(svg) { animation: spin 3s linear infinite; }
   .quick { margin-top: 14px; }
   .heatwave { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: linear-gradient(90deg, transparent, #38bdf8, transparent); background-size: 200% 100%; animation: shimmer 1.6s linear infinite; }
   .seat-title { margin-top: 16px; }
@@ -624,7 +651,7 @@
   .seat.on { background: color-mix(in srgb, var(--heat) 14%, var(--surface-2)); }
   .seat-ic { width: 38px; height: 38px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--surface-3); color: var(--text-2); transition: background 0.4s, color 0.4s, box-shadow 0.4s, transform 0.4s var(--spring); }
   .seat.on .seat-ic { background: var(--heat); color: #fff; box-shadow: 0 6px 18px -4px var(--heat); transform: rotate(-6deg); }
-  .seat.on .seat-ic :global(svg) { animation: float 1.6s ease-in-out infinite; }
+
 
   .sub-title { margin-top: 14px; }
   .win { gap: 8px; }

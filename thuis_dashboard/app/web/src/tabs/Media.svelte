@@ -1,8 +1,8 @@
 <script>
   import { fly, fade, scale } from 'svelte/transition';
   import { mdiTelevision, mdiSpeaker, mdiPower, mdiSofaOutline } from '@mdi/js';
-  import { MEDIA, tvIsOn } from '$shared/config.js';
-  import { states, action, isOn } from '../lib/api.js';
+  import { MEDIA, tvIsOn, stereoIsOn } from '$shared/config.js';
+  import { states, action } from '../lib/api.js';
   import Segmented from '../components/Segmented.svelte';
   import Icon from '../components/Icon.svelte';
   import TvPanel from './media/TvPanel.svelte';
@@ -13,8 +13,9 @@
   const COLORS = { tv: '#6366f1', stereo: '#ec4899', uit: '#64748b' };
 
   const tvOn = $derived(tvIsOn((id) => $states[id]));
-  const stereoOn = $derived(isOn($states[MEDIA.stereoActive]));
-  const liveMode = $derived(tvOn ? 'tv' : stereoOn ? 'stereo' : 'uit');
+  const stereoOn = $derived(stereoIsOn((id) => $states[id]));
+  // Stereo wins when both look on (the Chromecast can report 'idle' while the TV is off)
+  const liveMode = $derived(stereoOn ? 'stereo' : tvOn ? 'tv' : 'uit');
 
   let pending = $state(/** @type {'tv'|'stereo'|'uit'|null} */ (null));
   const mode = $derived(pending ?? liveMode);
@@ -81,6 +82,6 @@
   .idle { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 48px 16px; text-align: center; color: var(--text-2); }
   .idle-ic {
     width: 88px; height: 88px; border-radius: 28px; display: grid; place-items: center; margin-bottom: 8px;
-    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-3); animation: float 4s ease-in-out infinite;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-3);
   }
 </style>

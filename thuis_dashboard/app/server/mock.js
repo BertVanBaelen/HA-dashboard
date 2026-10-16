@@ -9,6 +9,12 @@ export { MOCK_USERS };
 
 const now = () => new Date().toISOString();
 const rand = (a, b, d = 1) => Number((a + Math.random() * (b - a)).toFixed(d));
+const MG_MOCK = {
+  ancillary_battery_voltage: ['12.6', 'V'], battery_energy: ['44.1', 'kWh'], total_battery_capacity: ['64', 'kWh'],
+  charging_current: ['10.8', 'A'], charging_voltage: ['398', 'V'], last_charge_energy: ['21.4', 'kWh'],
+  last_trip_distance: ['12.4', 'km'], last_trip_efficiency: ['16.2', 'kWh/100km'], efficiency_since_last_charge: ['17.1', 'kWh/100km'],
+  journey_distance: ['0', 'km'], instant_power: ['0.4', 'kW'], speed: ['0', 'km/h'], brand: ['MG'], model: ['MG4 Electric'], vin: ['LSJWH4000PN000000'],
+};
 
 function fakeState(id) {
   const [domain, name] = id.split('.');
@@ -116,6 +122,7 @@ function fakeState(id) {
       else if (n.includes('zigbee2mqtt_bridge_version')) state = '2.1.3';
       else if (n.includes('reachability')) state = 'online';
       else if (n.includes('charging_status')) state = 'charging';
+      else if (n.startsWith('mg_') && MG_MOCK[n.slice(16)]) [state, attrs.unit_of_measurement] = MG_MOCK[n.slice(16)];
       else state = String(rand(0, 100, 0));
       break;
     }
@@ -264,6 +271,12 @@ export class MockHaClient extends EventEmitter {
         const e = new Date(s.getTime() + 3600e3);
         events.push({ start: s.toISOString(), end: e.toISOString(), summary: titles[(t.getDate() + idx) % titles.length], location: idx % 2 ? 'Antwerpen' : undefined });
       }
+      const nowS = new Date(); nowS.setMinutes(0, 0, 0); nowS.setHours(nowS.getHours() - 1);
+      const live = idx === 0
+        ? [{ start: nowS.toISOString(), end: new Date(nowS.getTime() + 3 * 3600e3).toISOString(), summary: 'Thuiswerken', location: 'Bureau', uid: `live-${id}` },
+           { start: new Date(nowS.getTime() + 2.5 * 3600e3).toISOString(), end: new Date(nowS.getTime() + 3.5 * 3600e3).toISOString(), summary: 'Koffie met Jan', uid: `next-${id}` }]
+        : idx === 1 ? [{ start: nowS.toISOString().slice(0, 10), end: new Date(nowS.getTime() + 86400e3).toISOString().slice(0, 10), summary: 'Verlof', uid: `day-${id}` }] : [];
+      events.push(...live.filter((ev) => new Date(ev.end) > start && new Date(ev.start) < end));
       out[id] = { events: [...events, ...(this.created[id] ?? []).filter((ev) => new Date(ev.end) > start && new Date(ev.start) < end)] };
     });
     return out;

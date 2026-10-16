@@ -190,7 +190,7 @@
     background: radial-gradient(circle at 25% 50%, var(--lamp-soft), transparent 45%);
     transition: opacity 0.6s var(--ease);
   }
-  .hero.on .halo { opacity: calc(0.5 + var(--glow) * 0.5); animation: sway 8s ease-in-out infinite; }
+  .hero.on .halo { opacity: calc(0.5 + var(--glow) * 0.5); }
   .bulb {
     width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
     background: var(--surface-3); color: var(--text-3);

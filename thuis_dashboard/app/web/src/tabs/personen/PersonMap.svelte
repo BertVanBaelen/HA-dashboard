@@ -131,7 +131,7 @@
     transition: transform 0.35s var(--spring);
   }
   .pmap :global(.pm-face img) { width: 100%; height: 100%; object-fit: cover; }
-  .pmap :global(.pm-pin.home .pm-face) { --pulse: var(--mc); animation: pulse-ring 2.2s infinite; }
+  .pmap :global(.pm-pin.home .pm-face) { --pulse: var(--mc); }
   .pmap :global(.pm-pin.sel .pm-face) { transform: scale(1.18); }
   .pmap :global(.pm-name) {
     position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%);

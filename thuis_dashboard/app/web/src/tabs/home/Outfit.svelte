@@ -77,7 +77,7 @@
   .item { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 64px; flex: 1; }
   .bubble { width: 62px; height: 62px; border-radius: 22px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 18%, var(--surface-2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 30%, transparent), 0 10px 22px -12px var(--c); animation: bounce-in 0.7s var(--spring) var(--d) both; transition: transform 0.3s var(--spring); }
   .item:hover .bubble { transform: scale(1.08) rotate(-4deg); }
-  .emo { font-size: 2rem; line-height: 1; display: inline-block; animation: sway 3.2s ease-in-out infinite; }
+  .emo { font-size: 2rem; line-height: 1; display: inline-block; }
   .lbl { font-size: 0.78rem; font-weight: 650; color: var(--text-2); text-align: center; }
   .tip { margin: 0; text-align: center; font-size: 0.85rem; color: var(--text-2); }
   @keyframes bounce-in {

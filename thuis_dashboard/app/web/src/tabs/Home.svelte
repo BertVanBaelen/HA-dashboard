@@ -268,7 +268,7 @@
   :global(.card.weather.night) { --card-accent: #8b5cf6; }
   .wx { padding: 18px 18px 8px; display: flex; flex-direction: column; gap: 12px; }
   .wx-main { display: flex; align-items: center; gap: 16px; }
-  .wx-icon { color: #f59e0b; animation: float 4s ease-in-out infinite; filter: drop-shadow(0 8px 18px color-mix(in srgb, #f59e0b 45%, transparent)); }
+  .wx-icon { color: #f59e0b; filter: drop-shadow(0 8px 18px color-mix(in srgb, #f59e0b 45%, transparent)); }
   .wx-icon.night { color: #a5b4fc; filter: drop-shadow(0 8px 18px rgba(165, 180, 252, 0.4)); }
   .wx-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--text-2); }
   .wx-meta span { display: inline-flex; align-items: center; gap: 4px; }
@@ -288,14 +288,14 @@
   .avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
   .person.home .avatar { filter: none; box-shadow: 0 0 0 3px var(--surface-solid), 0 0 0 5px var(--pc), 0 10px 24px -8px var(--pc); }
   .status { position: absolute; right: 2px; bottom: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--text-3); border: 3px solid var(--surface-solid); }
-  .home .status { background: var(--ok); --pulse: var(--ok); animation: pulse-ring 2s infinite; }
+  .home .status { background: var(--ok); --pulse: var(--ok); }
   .pname { font-weight: 700; }
 
   .rooms { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .room { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: 16px; background: var(--surface-2); transition: background 0.4s; }
   .room.heating { background: color-mix(in srgb, var(--heat) 14%, transparent); }
   .rname { font-size: 0.8rem; font-weight: 600; color: var(--text-2); display: flex; gap: 4px; }
-  .flame { display: inline-block; animation: float 1.4s ease-in-out infinite; }
+  .flame { display: inline-block; }
 
   .events { display: flex; flex-direction: column; gap: 8px; }
   .event { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); border-left: 4px solid var(--ec); }

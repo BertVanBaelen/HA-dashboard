@@ -208,7 +208,7 @@
   .rays { stroke: #fbbf24; stroke-width: 3; stroke-linecap: round; animation: spin 30s linear infinite; transform-origin: 62px 58px; transition: opacity 1s; }
   .sun { fill: #fbbf24; filter: drop-shadow(0 0 8px #fbbf24); transition: opacity 1s; }
   .moon { fill: #fef3c7; filter: drop-shadow(0 0 8px rgba(254, 243, 199, 0.6)); }
-  .star { fill: #fef9c3; animation: twinkle 2.6s ease-in-out infinite; }
+  .star { fill: #fef9c3; animation: twinkle 6s ease-in-out infinite; }
   .clouds { transition: opacity 1.2s; }
   .cloud path { fill: color-mix(in srgb, var(--surface-solid) 85%, #94a3b8); }
   .night .cloud path { fill: color-mix(in srgb, #64748b 60%, var(--surface-solid)); }
@@ -220,7 +220,7 @@
   .night .ground { fill: color-mix(in srgb, #14532d 45%, var(--surface-solid)); }
   .trunk { fill: color-mix(in srgb, #92400e 70%, var(--surface-solid)); }
   .leaf { fill: color-mix(in srgb, #16a34a 70%, var(--surface-solid)); }
-  .tree { transform-origin: 127px 224px; animation: sway 6s ease-in-out infinite; }
+  .tree { transform-origin: 127px 224px;  }
 
   .pill { fill: color-mix(in srgb, var(--surface-solid) 82%, transparent); stroke: var(--border); }
   .outdoor .lbl { font-size: 10px; font-weight: 700; fill: var(--text-2); text-transform: uppercase; letter-spacing: 0.06em; }
@@ -232,10 +232,10 @@
   .wall { fill: color-mix(in srgb, #f59e0b 8%, var(--surface-solid)); stroke: var(--border); stroke-width: 1.5; }
   .room-bg { fill: transparent; stroke: color-mix(in srgb, var(--text-3) 35%, transparent); stroke-width: 1.2; }
   .warm { opacity: 0; transition: opacity 0.8s; }
-  .room.heating .warm { animation: warm 2.8s ease-in-out infinite; }
+  .room.heating .warm { animation: warm 6s ease-in-out infinite; }
   .r-name { font-size: 9.5px; font-weight: 800; fill: var(--text-2); text-transform: uppercase; letter-spacing: 0.05em; }
   .r-temp { font-size: 16px; font-weight: 800; fill: var(--text); letter-spacing: -0.03em; }
-  .flame { font-size: 11px; animation: flicker 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 90%; }
+  .flame { font-size: 11px; transform-box: fill-box; transform-origin: 50% 90%; }
 
   .hole { fill: color-mix(in srgb, #0f172a 75%, var(--surface-solid)); }
   .glass { fill: color-mix(in srgb, #7dd3fc 45%, var(--surface-solid)); stroke: color-mix(in srgb, var(--text) 25%, transparent); stroke-width: 1; }
@@ -246,7 +246,7 @@
   .halo-win { fill: none; stroke: var(--danger); stroke-width: 2; opacity: 0; }
   .room.open .sash { transform: scaleX(0.45) skewY(-14deg); }
   .room.open .frame { stroke: var(--danger); stroke-width: 2; }
-  .room.open .halo-win { animation: win-pulse 1.6s ease-out infinite; }
+  .room.open .halo-win { animation: win-pulse 2.6s ease-out infinite; }
 
   .roof { stroke: color-mix(in srgb, #7c2d12 40%, transparent); stroke-width: 1.5; stroke-linejoin: round; }
   .roof-a { stop-color: color-mix(in srgb, #c2410c 75%, var(--surface-solid)); }

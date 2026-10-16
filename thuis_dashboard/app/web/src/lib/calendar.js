@@ -40,3 +40,34 @@ export async function fetchEvents(calendars, start, end) {
   }
   return out.sort((a, b) => a.start.getTime() - b.start.getTime() || Number(b.allDay) - Number(a.allDay));
 }
+
+/**
+ * Events that are running at `now` plus upcoming (non all-day) events starting within `aheadMs`.
+ * Falls back to the calendar entity state/attributes (only the first active event) when fetching fails.
+ * @param {string[]} calendars
+ * @param {Record<string, any>} [entityStates] `$states`, used for the fallback
+ */
+export async function fetchCurrentEvents(calendars, now = new Date(), aheadMs = 2 * 3600e3, entityStates = {}) {
+  if (!calendars?.length) return { active: [], next: [] };
+  const t = now.getTime();
+  let events;
+  try {
+    const seen = new Set();
+    events = (await fetchEvents(calendars, new Date(t - 1000), new Date(t + aheadMs))).filter((e) => {
+      const k = `${e.calendar}|${e.uid ?? ''}|${e.summary}|${e.start.getTime()}`;
+      return !seen.has(k) && !!seen.add(k);
+    });
+  } catch {
+    events = calendars
+      .map((cal) => ({ cal, s: entityStates[cal] }))
+      .filter(({ s }) => s?.state === 'on' && s.attributes?.start_time)
+      .map(({ cal, s }) => {
+        const a = s.attributes;
+        return { calendar: cal, color: colorFor(cal), summary: a.message ?? '(geen titel)', start: parseHaDate(a.start_time), end: parseHaDate(a.end_time ?? a.start_time), allDay: !!a.all_day, location: a.location, description: a.description };
+      });
+  }
+  return {
+    active: events.filter((e) => e.start.getTime() <= t && e.end.getTime() > t),
+    next: events.filter((e) => !e.allDay && e.start.getTime() > t && e.start.getTime() <= t + aheadMs),
+  };
+}

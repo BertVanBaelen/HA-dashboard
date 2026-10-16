@@ -2,6 +2,7 @@ import {
   mdiSofaOutline, mdiBedOutline, mdiShowerHead, mdiWeatherPartlyCloudy, mdiRadiator, mdiBatteryCharging60,
   mdiThermometer, mdiFlash, mdiSpeedometer, mdiSpeedometerSlow, mdiMapMarkerDistance, mdiEvStation,
   mdiCellphone, mdiAccessPointNetwork,
+  mdiRoadVariant, mdiBatteryCharging, mdiCurrentAc, mdiLeaf, mdiMapMarkerPath, mdiCarBattery, mdiCarTireAlert,
 } from '@mdi/js';
 import { ROOMS, HOME, CAR_ENTITIES as CAR, PEOPLE, DOOR_SENSORS } from '$shared/config.js';
 import { PERSON_COLORS } from '../../lib/colors.js';
@@ -54,6 +55,8 @@ export function klimaatCharts() {
 
 /** @returns {import('./data.js').ChartDef[]} */
 export function autoCharts() {
+  const carPrefix = CAR.soc.replace(/^sensor\./, '').replace(/_state_of_charge$/, '');
+  const carId = (/** @type {string} */ domain, /** @type {string} */ suffix) => `${domain}.${carPrefix}_${suffix}`;
   return [
     {
       id: 'car-soc',
@@ -132,6 +135,97 @@ export function autoCharts() {
         { entity: CAR.soc, label: 'Batterij', color: '--ok', type: 'area', digits: 0 },
         { entity: CAR.chargingPower, label: 'Laadvermogen', color: '--danger', axis: 'y2' },
       ],
+    },
+    {
+      id: 'car-range',
+      title: 'Bereik',
+      iconPath: mdiRoadVariant,
+      accent: 'var(--accent)',
+      defaultRange: '7d',
+      period: periodHourly,
+      axes: { y: { zero: true, digits: 0 } },
+      series: [
+        { entity: CAR.range, label: 'Bereik', color: '--accent', type: 'area', digits: 0 },
+        { entity: CAR.estimatedRangeAfterCharging, label: 'Na laden', color: '--accent-2', dash: true, digits: 0 },
+      ],
+    },
+    {
+      id: 'car-energy',
+      title: 'Energie in batterij',
+      iconPath: mdiBatteryCharging,
+      accent: 'var(--ok)',
+      defaultRange: '7d',
+      period: periodHourly,
+      axes: { y: { zero: true } },
+      series: [{ entity: carId('sensor', 'battery_energy'), label: 'Energie', color: '--ok', type: 'area' }],
+    },
+    {
+      id: 'car-charge-elec',
+      title: 'Laadstroom & spanning',
+      iconPath: mdiCurrentAc,
+      accent: 'var(--warn)',
+      defaultRange: '24u',
+      ranges: ['6u', '24u', '7d'],
+      axes: { y: { zero: true }, y2: { zero: true, digits: 0 } },
+      series: [
+        { entity: carId('sensor', 'charging_current'), label: 'Stroom', color: '--warn', type: 'area' },
+        { entity: carId('sensor', 'charging_voltage'), label: 'Spanning', color: '--info', axis: 'y2', digits: 0 },
+      ],
+    },
+    {
+      id: 'car-charged',
+      title: 'Geladen energie',
+      iconPath: mdiEvStation,
+      accent: 'var(--ok)',
+      defaultRange: '30d',
+      ranges: ['7d', '30d'],
+      period: periodDaily,
+      axes: { y: { zero: true } },
+      series: [{ entity: carId('sensor', 'last_charge_energy'), stat: 'max', label: 'Laadbeurt', color: '--ok', type: 'bar', size: 0.6 }],
+    },
+    {
+      id: 'car-efficiency',
+      title: 'Verbruik',
+      iconPath: mdiLeaf,
+      accent: 'var(--ok)',
+      defaultRange: '30d',
+      ranges: ['7d', '30d'],
+      period: periodDaily,
+      series: [
+        { entity: carId('sensor', 'last_trip_efficiency'), label: 'Vorige rit', color: '--ok' },
+        { entity: carId('sensor', 'efficiency_since_last_charge'), label: 'Sinds laden', color: '--accent-2' },
+      ],
+    },
+    {
+      id: 'car-trips',
+      title: 'Ritafstand',
+      iconPath: mdiMapMarkerPath,
+      accent: 'var(--accent-2)',
+      defaultRange: '30d',
+      ranges: ['7d', '30d'],
+      period: periodDaily,
+      axes: { y: { zero: true, digits: 0 } },
+      series: [{ entity: carId('sensor', 'last_trip_distance'), stat: 'max', label: 'Langste rit', color: '--accent-2', type: 'bar', size: 0.6, digits: 1 }],
+    },
+    {
+      id: 'car-12v',
+      title: '12V-batterij',
+      iconPath: mdiCarBattery,
+      accent: 'var(--info)',
+      defaultRange: '7d',
+      ranges: ['24u', '7d', '30d'],
+      period: periodHourly,
+      series: [{ entity: carId('sensor', 'ancillary_battery_voltage'), label: 'Spanning', color: '--info', type: 'area', digits: 2 }],
+    },
+    {
+      id: 'car-tyres',
+      title: 'Bandenspanning',
+      iconPath: mdiCarTireAlert,
+      accent: 'var(--info)',
+      defaultRange: '30d',
+      ranges: ['7d', '30d'],
+      period: periodDaily,
+      series: CAR.tyres.map((t, i) => ({ entity: t.entity, label: t.label, color: ['--accent', '--accent-2', '--info', '--warn'][i % 4], digits: 1 })),
     },
   ];
 }

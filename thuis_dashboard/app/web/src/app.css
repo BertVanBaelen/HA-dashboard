@@ -156,12 +156,12 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 0.85re
 
 /* ===== Animations ===== */
 @keyframes fade-up { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
-@keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 70% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes pop { 0% { transform: scale(0.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--pulse, var(--accent)) 55%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-@keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
 @keyframes glow { 0%, 100% { filter: drop-shadow(0 0 0 transparent); } 50% { filter: drop-shadow(0 0 10px var(--glow, var(--accent))); } }
 @keyframes blob {
   0% { transform: translate(0, 0) scale(1); }

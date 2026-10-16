@@ -102,7 +102,7 @@
   .down .bic { color: var(--danger); background: color-mix(in srgb, var(--danger) 16%, transparent); }
   .bt { font-weight: 650; }
   .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--danger); --pulse: var(--danger); animation: pulse-ring 1.6s infinite; }
-  .dot.ok { background: var(--ok); --pulse: var(--ok); animation: pulse-ring 2.6s infinite; }
+  .dot.ok { background: var(--ok); --pulse: var(--ok); animation: none; }
 
   .join.on { background: color-mix(in srgb, #f59e0b 14%, transparent); }
   .gauge { position: relative; width: 60px; height: 60px; flex-shrink: 0; margin: -6px 0; }
@@ -110,7 +110,7 @@
   .track { fill: none; stroke: var(--surface-3); stroke-width: 5; }
   .prog { fill: none; stroke: #f59e0b; stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
   .gi { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); transition: color 0.3s; }
-  .on .gi { color: #f59e0b; --glow: #f59e0b; animation: glow 1.6s ease-in-out infinite; }
+  .on .gi { color: #f59e0b; --glow: #f59e0b; }
   .cd { color: #f59e0b; }
   .rs { gap: 8px; min-height: 46px; }
   .ri { display: inline-grid; }

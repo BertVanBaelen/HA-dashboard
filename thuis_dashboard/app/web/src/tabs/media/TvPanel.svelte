@@ -1,6 +1,6 @@
 <script>
   import { slide, scale } from 'svelte/transition';
-  import { mdiArrowLeft, mdiHome, mdiRewind, mdiFastForward, mdiPlay, mdiPause, mdiGestureSwipe, mdiGamepadCircleOutline, mdiApps } from '@mdi/js';
+  import { mdiArrowLeft, mdiHome, mdiRewind, mdiFastForward, mdiPlayPause, mdiGestureSwipe, mdiGamepadCircleOutline, mdiApps } from '@mdi/js';
   import { MEDIA } from '$shared/config.js';
   import { states, callService, unavailable } from '../../lib/api.js';
   import Card from '../../components/Card.svelte';
@@ -10,15 +10,14 @@
   import Touchpad from './Touchpad.svelte';
   import Dpad from './Dpad.svelte';
   import VolumeControl from './VolumeControl.svelte';
-  import { hold, OFF_STATES } from './hold.js';
+  import { hold } from './hold.js';
 
   const NAV = { up: 'CursorUp', down: 'CursorDown', left: 'CursorLeft', right: 'CursorRight', ok: 'Confirm' };
-  const PAD_KEY = 'thuis-media-pad';
+  const PAD_KEY = 'thuis-media-pad2';
 
   const cast = $derived($states[MEDIA.chromecast]);
   const tvRemote = $derived($states[MEDIA.tvRemote]);
   const castRemote = $derived($states[MEDIA.chromecastRemote]);
-  const castOn = $derived(!!cast && !OFF_STATES.includes(cast.state));
   const playing = $derived(cast?.state === 'playing' || cast?.state === 'buffering');
   const appName = $derived(String(cast?.attributes?.app_name ?? '').toLowerCase());
   const allApps = [...MEDIA.apps, ...MEDIA.moreApps];
@@ -26,7 +25,7 @@
 
   const appColor = $derived(/** @type {string} */ ((currentApp && 'color' in currentApp && currentApp.color) || ''));
 
-  let padMode = $state(localStorage.getItem(PAD_KEY) ?? 'touch');
+  let padMode = $state(localStorage.getItem(PAD_KEY) ?? 'dpad');
   let moreOpen = $state(false);
   let launching = $state(/** @type {string|null} */ (null));
 
@@ -41,6 +40,7 @@
   const send = (/** @type {string} */ entity, /** @type {string} */ command) =>
     callService('remote', 'send_command', { command }, entity).catch(() => {});
   const nav = (/** @type {keyof typeof NAV} */ d) => send(MEDIA.tvRemote, NAV[d]);
+  const tv = (/** @type {string} */ c) => send(MEDIA.tvRemote, c);
   const cc = (/** @type {string} */ c) => send(MEDIA.chromecastRemote, c);
 
   async function launch(/** @type {{key:string,label:string,activity:string}} */ app) {
@@ -58,21 +58,13 @@
 <div class="grid">
   <Card pad={false} glow={playing} accent={appColor}>
     <NowPlaying s={cast} kind="tv" color={appColor || 'var(--accent)'}>
-      {#if castOn}
-        <div class="transport" transition:slide={{ duration: 300 }}>
-          <button class="tbtn" aria-label="Terugspoelen" disabled={castNA} use:hold={{ fn: () => cc('MEDIA_REWIND'), interval: 400 }}><Icon path={mdiRewind} size={26} /></button>
-          {#if playing}
-            <button class="tbtn main" aria-label="Pauze" disabled={castNA} onclick={() => cc('MEDIA_PAUSE')}>
-              <span in:scale={{ start: 0.5, duration: 250 }}><Icon path={mdiPause} size={34} /></span>
-            </button>
-          {:else}
-            <button class="tbtn main" aria-label="Afspelen" disabled={castNA} onclick={() => cc('MEDIA_PLAY')}>
-              <span in:scale={{ start: 0.5, duration: 250 }}><Icon path={mdiPlay} size={34} /></span>
-            </button>
-          {/if}
-          <button class="tbtn" aria-label="Vooruitspoelen" disabled={castNA} use:hold={{ fn: () => cc('MEDIA_FAST_FORWARD'), interval: 400 }}><Icon path={mdiFastForward} size={26} /></button>
-        </div>
-      {/if}
+      <div class="transport">
+        <button class="tbtn" aria-label="Terugspoelen" disabled={tvNA} use:hold={{ fn: () => tv(MEDIA.tvKeys.rewind), interval: 400 }}><Icon path={mdiRewind} size={26} /></button>
+        <button class="tbtn main" aria-label="Afspelen / pauze" disabled={tvNA} use:hold={{ fn: () => tv(MEDIA.tvKeys.playPause), repeat: false }}>
+          <Icon path={mdiPlayPause} size={34} />
+        </button>
+        <button class="tbtn" aria-label="Vooruitspoelen" disabled={tvNA} use:hold={{ fn: () => tv(MEDIA.tvKeys.forward), interval: 400 }}><Icon path={mdiFastForward} size={26} /></button>
+      </div>
     </NowPlaying>
   </Card>
 
@@ -84,8 +76,8 @@
           value={padMode}
           onchange={setPad}
           options={[
-            { value: 'touch', label: 'Touch', iconPath: mdiGestureSwipe },
             { value: 'dpad', label: 'Pijlen', iconPath: mdiGamepadCircleOutline },
+            { value: 'touch', label: 'Touch', iconPath: mdiGestureSwipe },
           ]}
         />
       </div>
@@ -158,7 +150,7 @@
   .transport { display: flex; align-items: center; justify-content: center; gap: 18px; }
   .tbtn {
     width: 56px; height: 56px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center;
-    background: var(--surface-2); color: var(--text); touch-action: none; -webkit-tap-highlight-color: transparent;
+    background: var(--surface-2); color: var(--text); touch-action: manipulation; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
     transition: transform 0.2s var(--spring), background 0.2s;
   }
   .tbtn:active, .tbtn:global(.held) { transform: scale(0.88); background: var(--accent-soft); }
@@ -167,7 +159,7 @@
   .padsel { width: 170px; }
   .remote { gap: 12px; }
   .navrow { gap: 10px; }
-  .navbtn { min-height: 52px; gap: 8px; font-weight: 700; touch-action: none; }
+  .navbtn { min-height: 52px; gap: 8px; font-weight: 700; touch-action: manipulation; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
   .navbtn:global(.held) { transform: scale(0.95); }
 
   .apps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -187,7 +179,7 @@
     box-shadow: 0 10px 22px -10px var(--app); transition: transform 0.4s var(--spring);
   }
   .app.current { border-color: color-mix(in srgb, var(--app) 60%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--app) 18%, transparent); }
-  .app.current .logo { animation: glow 2.4s ease-in-out infinite; --glow: var(--app); }
+  .app.current .logo { --glow: var(--app); }
   .app.busy .logo { animation: wiggle 0.5s ease-in-out infinite; }
   .more { margin-top: 10px; gap: 6px; }
   .more :global(.chev) { transition: transform 0.35s var(--spring); }

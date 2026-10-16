@@ -51,7 +51,7 @@
   .bat.na { opacity: 0.6; }
   .bic { width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); transition: color 0.4s, background 0.4s; }
   .low .bic { --pulse: var(--danger); animation: pulse-ring 1.6s infinite; }
-  .bic.charging :global(.icon) { --glow: var(--ok); animation: glow 1.6s ease-in-out infinite; }
+  .bic.charging :global(.icon) { --glow: var(--ok); }
   .body { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
   .top { gap: 8px; }
   .lbl { font-weight: 600; font-size: 0.92rem; }

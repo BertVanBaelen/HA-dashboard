@@ -18,7 +18,7 @@
 <style>
   .dpad {
     position: relative; width: min(250px, 100%); aspect-ratio: 1; margin: 0 auto; border-radius: 50%;
-    display: grid; grid-template: 1fr 1.15fr 1fr / 1fr 1.15fr 1fr; touch-action: none;
+    display: grid; grid-template: 1fr 1.15fr 1fr / 1fr 1.15fr 1fr; touch-action: manipulation; -webkit-touch-callout: none;
     background: conic-gradient(from 45deg, var(--surface-2), var(--surface-3), var(--surface-2), var(--surface-3), var(--surface-2));
     border: 1px solid var(--border); box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.08), var(--shadow);
   }

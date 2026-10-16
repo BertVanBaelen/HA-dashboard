@@ -65,7 +65,7 @@
   .rain-chart.wet { background: color-mix(in srgb, var(--info) 10%, var(--surface-2)); }
   .sum { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 0.92rem; }
   .emoji { font-size: 1.25rem; display: inline-block; animation: pop 0.6s var(--spring); }
-  .emoji.bob { animation: pop 0.6s var(--spring), float 2.4s ease-in-out 0.6s infinite; }
+  .emoji.bob { animation: pop 0.6s var(--spring); }
   .bars { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
   .slot { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
   .val { font-size: 0.78rem; font-weight: 700; color: var(--info); opacity: 0; animation: fade-up 0.4s var(--ease) forwards; white-space: nowrap; }

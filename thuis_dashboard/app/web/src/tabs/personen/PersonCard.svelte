@@ -5,13 +5,14 @@
   import Card from '../../components/Card.svelte';
   import Icon from '../../components/Icon.svelte';
   import Badge from '../../components/Badge.svelte';
+  import PersonAgenda from './PersonAgenda.svelte';
   import { fmtDistance, mapsUrl } from './geo.js';
 
   /**
-   * @type {{ p: any, now: Date, selected?: boolean, onclick?: () => void }}
+   * @type {{ p: any, now: Date, agenda?: { active: any[], next: any[] }, selected?: boolean, onclick?: () => void }}
    * p = { key, name, color, person, tracker, battery, batteryState, charger, geocoded, hasGeocoded, steps, activity, pos, distance, picture }
    */
-  let { p, now, selected = false, onclick } = $props();
+  let { p, now, agenda = { active: [], next: [] }, selected = false, onclick } = $props();
 
   const bad = (s) => !s || s.state === 'unavailable' || s.state === 'unknown' || s.state === '';
   const st = $derived(p.person?.state ?? 'unknown');
@@ -93,6 +94,8 @@
       <div class="line"><span class="ic"><Icon name="mapMarker" size={18} /></span><span class="muted">Locatie niet beschikbaar</span></div>
     {/if}
 
+    <PersonAgenda active={agenda.active} next={agenda.next} {now} />
+
     <div class="stats">
       <div class="stat">
         <span class="ic" style="--ic:{home ? 'var(--ok)' : p.color}"><Icon path={home ? mdiHomeVariant : mdiMapMarkerDistance} size={18} /></span>
@@ -150,12 +153,12 @@
   .top { display: flex; align-items: center; gap: 14px; }
   .avatar { position: relative; width: 68px; height: 68px; flex-shrink: 0; display: grid; place-items: center; }
   .ring { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, var(--pc), color-mix(in srgb, var(--pc) 30%, transparent), var(--pc)); opacity: 0.5; transition: opacity 0.4s; }
-  .avatar.home .ring { background: conic-gradient(from 0deg, var(--ok), color-mix(in srgb, var(--ok) 20%, transparent), var(--ok)); opacity: 1; animation: spin 6s linear infinite; }
+  .avatar.home .ring { background: conic-gradient(from 0deg, var(--ok), color-mix(in srgb, var(--ok) 20%, transparent), var(--ok)); opacity: 1; }
   .face { position: relative; width: 58px; height: 58px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: var(--pc); color: #fff; font-weight: 800; font-size: 1.5rem; border: 3px solid var(--surface-solid); transition: filter 0.4s, transform 0.4s var(--spring); }
   .avatar.unknown .face { filter: grayscale(0.8) opacity(0.7); }
   .face img { width: 100%; height: 100%; object-fit: cover; }
   .dot { position: absolute; right: -2px; bottom: -2px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--text-3); border: 3px solid var(--surface-solid); transition: background 0.4s; }
-  .avatar.home .dot { background: var(--ok); --pulse: var(--ok); animation: pulse-ring 2s infinite; }
+  .avatar.home .dot { background: var(--ok); --pulse: var(--ok); }
   :global(.card.pcard:active) .face { transform: scale(0.94); }
   .who { gap: 2px; min-width: 0; flex: 1; }
   .nm { gap: 8px; flex-wrap: wrap; }
@@ -193,6 +196,6 @@
     animation: shimmer 1.6s linear infinite;
   }
   .bolt { width: 0; opacity: 0; color: var(--ok); overflow: hidden; transition: width 0.3s var(--ease), opacity 0.3s; display: grid; place-items: center; }
-  .bolt.show { width: 24px; opacity: 1; animation: glow 1.6s ease-in-out infinite; --glow: var(--ok); }
-  .bolt.show :global(.icon) { animation: float 1.6s ease-in-out infinite; }
+  .bolt.show { width: 24px; opacity: 1; --glow: var(--ok); }
+
 </style>

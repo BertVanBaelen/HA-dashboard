@@ -223,7 +223,7 @@
   .title-wrap { min-width: 0; display: grid; }
   .title-wrap h1 { grid-area: 1 / 1; font-size: 1.85rem; letter-spacing: -0.03em; }
   .who { display: flex; align-items: center; gap: 6px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); --pulse: var(--ok); animation: pulse-ring 2.4s infinite; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); --pulse: var(--ok); }
   .dot.offline { background: var(--danger); --pulse: var(--danger); }
   .dot.ha { background: var(--warn); --pulse: var(--warn); }
   .gear { width: 46px; height: 46px; background: var(--surface); border: 1px solid var(--border); backdrop-filter: blur(12px); }

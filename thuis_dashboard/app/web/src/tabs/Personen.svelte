@@ -1,8 +1,9 @@
 <script>
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { mdiFitToScreenOutline, mdiAccountGroup } from '@mdi/js';
   import { PEOPLE, HOME } from '$shared/config.js';
-  import { states } from '../lib/api.js';
+  import { states, user, prefs, others } from '../lib/api.js';
+  import { fetchCurrentEvents } from '../lib/calendar.js';
   import { PERSON_COLORS } from '../lib/colors.js';
   import Card from '../components/Card.svelte';
   import Icon from '../components/Icon.svelte';
@@ -18,8 +19,45 @@
 
   onMount(() => {
     const t = setInterval(() => (now = new Date()), 30e3);
-    return () => clearInterval(t);
+    const r = setInterval(() => loadEvents(), 60e3);
+    return () => {
+      clearInterval(t);
+      clearInterval(r);
+    };
   });
+
+  const calsByPerson = $derived.by(() => {
+    const m = {};
+    for (const cfg of PEOPLE) {
+      const cals = $user?.person === cfg.person ? $prefs?.calendars : ($others ?? []).find((o) => o.person === cfg.person)?.calendars;
+      m[cfg.key] = [...new Set(cals ?? [])].filter((c) => !Object.keys($states).length || $states[c]);
+    }
+    return m;
+  });
+  const allCals = $derived([...new Set(Object.values(calsByPerson).flat())].sort());
+  const calKey = $derived(allCals.join(','));
+  const calStateKey = $derived(allCals.map((c) => `${$states[c]?.state}|${$states[c]?.attributes?.message ?? ''}|${$states[c]?.attributes?.start_time ?? ''}`).join(','));
+
+  let current = $state(/** @type {{active:any[],next:any[]}} */ ({ active: [], next: [] }));
+  let req = 0;
+  async function loadEvents() {
+    const cals = [...allCals];
+    const id = ++req;
+    if (!cals.length) return (current = { active: [], next: [] });
+    const res = await fetchCurrentEvents(cals, new Date(), 2 * 3600e3, untrack(() => $states));
+    if (id === req) current = res;
+  }
+
+  $effect(() => {
+    calKey;
+    calStateKey;
+    untrack(() => loadEvents());
+  });
+
+  const agendaFor = (key) => {
+    const cals = calsByPerson[key] ?? [];
+    return { active: current.active.filter((e) => cals.includes(e.calendar)), next: current.next.filter((e) => cals.includes(e.calendar)) };
+  };
 
   const zoneState = $derived($states[HOME.zone]);
   const homePos = $derived(coords(zoneState));
@@ -125,7 +163,7 @@
     <div class="grid">
       {#each people as p (p.key)}
         <div id="persoon-{p.key}" class="slot">
-          <PersonCard {p} {now} selected={selected === p.key} onclick={() => select(p.key)} />
+          <PersonCard {p} {now} agenda={agendaFor(p.key)} selected={selected === p.key} onclick={() => select(p.key)} />
         </div>
       {/each}
     </div>

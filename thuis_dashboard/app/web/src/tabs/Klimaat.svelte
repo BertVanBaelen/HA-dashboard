@@ -159,8 +159,7 @@
 
   :global(.card.house-card) { overflow: hidden; }
 
-  .fan-tile.on :global(.ic .icon) { animation: spin 0.9s linear infinite; }
-  .bath-tile.on :global(.ic .icon) { animation: pulse-heat 1.2s ease-in-out infinite; }
+  .fan-tile.on :global(.ic .icon) { animation: spin 3s linear infinite; }
   @keyframes pulse-heat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
 
   .auto-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }

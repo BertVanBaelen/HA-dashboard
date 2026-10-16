@@ -35,7 +35,7 @@
 </div>
 
 <style>
-  .vol { display: grid; grid-template-columns: 76px 1fr 76px; gap: 10px; align-items: stretch; touch-action: none; }
+  .vol { display: grid; grid-template-columns: 76px 1fr 76px; gap: 10px; align-items: stretch; touch-action: manipulation; -webkit-touch-callout: none; }
   .disabled { opacity: 0.5; }
   button { border: 0; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; transition: transform 0.2s var(--spring), background 0.2s, color 0.2s; }
   .side {

@@ -243,7 +243,7 @@
   svg { width: 100%; height: 100%; overflow: visible; display: block; }
   .track { fill: none; stroke: var(--surface-3); stroke-width: 10; stroke-linecap: round; }
   .value { fill: none; stroke-width: 10; stroke-linecap: round; transition: opacity 0.4s, filter 0.4s; }
-  .glow { fill: none; stroke-width: 16; stroke-linecap: round; animation: heat-pulse 2.2s ease-in-out infinite; }
+  .glow { fill: none; stroke-width: 16; stroke-linecap: round; }
   .off .value { opacity: 0.18; filter: grayscale(1); }
   .tick { stroke-width: 1; opacity: 0.3; stroke-linecap: round; transition: stroke 0.3s, opacity 0.3s; }
   .tick.whole { stroke-width: 1.5; opacity: 0.5; }
@@ -276,12 +276,12 @@
   }
   .off .grip { background: var(--text-3); box-shadow: none; }
   .dragging .disc { scale: 1.06; --disc-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.4), inset 0 2px 1px rgba(255, 255, 255, 0.35), inset 0 -3px 8px rgba(0, 0, 0, 0.12); }
-  .heating .disc { box-shadow: var(--disc-shadow), 0 0 34px -6px color-mix(in srgb, var(--heat) 65%, transparent); animation: disc-glow 2.6s ease-in-out infinite; }
+  .heating .disc { box-shadow: var(--disc-shadow), 0 0 34px -6px color-mix(in srgb, var(--heat) 65%, transparent); }
 
   .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
   .state-ic { height: 22px; display: grid; place-items: center; color: var(--text-3); }
   .lbl { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
-  .flame { color: var(--heat); display: block; animation: flicker 1.1s ease-in-out infinite; transform-origin: 50% 90%; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--heat) 70%, transparent)); }
+  .flame { color: var(--heat); display: block; transform-origin: 50% 90%; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--heat) 70%, transparent)); }
   .temp { font-size: clamp(1.7rem, 16cqw, 2.6rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.05; color: var(--text); }
   .temp small { font-size: 0.45em; font-weight: 600; color: var(--text-2); vertical-align: top; margin-left: 1px; }
   .val { display: inline-block; animation: tick-pop 0.25s var(--spring); }

@@ -221,7 +221,6 @@
   .power { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; color: var(--text-3); font-weight: 700; font-size: 0.85rem; }
   .power :global(svg) { transition: color 0.4s; }
   .power.on { color: var(--heat); }
-  .power.on :global(svg) { animation: flick 1.2s ease-in-out infinite; }
   .power-bar { width: 52px; height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
   .power-bar span { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #fbbf24, var(--heat), #ef4444); transition: width 0.8s var(--ease); }
 
@@ -230,7 +229,7 @@
     display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; font-size: 0.85rem; font-weight: 600;
     color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent);
   }
-  .wiggle { display: inline-block; animation: wiggle 1.4s ease-in-out infinite; }
+  .wiggle { display: inline-block; }
 
   .knob-area { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 4px; }
   .hint { text-align: center; }
@@ -260,7 +259,7 @@
   .reset { gap: 8px; }
   .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: spin 0.8s linear infinite; display: inline-block; }
 
-  :global(.card.room-card.is-heating) { animation: warm 3s ease-in-out infinite; }
+  :global(.card.room-card.is-heating) { animation: warm 6s ease-in-out infinite; }
   @keyframes warm { 0%, 100% { box-shadow: var(--shadow), 0 10px 40px -16px color-mix(in srgb, var(--heat) 50%, transparent); } 50% { box-shadow: var(--shadow), 0 14px 50px -10px color-mix(in srgb, var(--heat) 70%, transparent); } }
   @keyframes flick { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2) translateY(-1px); } }
 </style>

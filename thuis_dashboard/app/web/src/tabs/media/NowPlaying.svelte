@@ -103,7 +103,7 @@
   .off .art { filter: grayscale(0.7); opacity: 0.7; box-shadow: none; }
   .playing .art { transform: scale(1.02); }
   .art img { width: 100%; height: 100%; object-fit: cover; }
-  .fallback { display: grid; place-items: center; animation: float 4s ease-in-out infinite; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.25)); }
+  .fallback { display: grid; place-items: center; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.25)); }
   .disc {
     width: 82px; height: 82px; border-radius: 50%; display: grid; place-items: center;
     background: repeating-radial-gradient(circle, #111 0 2px, #1d1d1d 2px 4px);
@@ -126,7 +126,7 @@
   .status { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
   .playing .status { color: var(--np); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-  .playing .dot { --pulse: var(--np); animation: pulse-ring 1.8s infinite; }
+  .playing .dot { --pulse: var(--np); }
   .title { font-size: 1.15rem; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
   .prog { display: flex; flex-direction: column; gap: 4px; }

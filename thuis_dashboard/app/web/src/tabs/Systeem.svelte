@@ -101,8 +101,8 @@
   .hero.warn { --c: var(--warn); }
   .hero.danger { --c: var(--danger); }
   .orb { position: relative; width: 76px; height: 76px; flex-shrink: 0; display: grid; place-items: center; }
-  .core { width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--c) 70%, #fff), var(--c)); box-shadow: 0 10px 28px -8px var(--c); z-index: 1; animation: float 4s ease-in-out infinite; }
-  .ring { position: absolute; inset: 5px; border-radius: 50%; border: 2px solid var(--c); opacity: 0; animation: ripple 2.8s var(--ease) infinite; }
+  .core { width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--c) 70%, #fff), var(--c)); box-shadow: 0 10px 28px -8px var(--c); z-index: 1; }
+  .ring { position: absolute; inset: 5px; border-radius: 50%; border: 2px solid var(--c); opacity: 0; animation: ripple 2.8s var(--ease) 2; }
   .r2 { animation-delay: 1.4s; }
   .hero.ok .ring { animation-duration: 4s; }
   .hero.danger .ring { animation-duration: 1.8s; }

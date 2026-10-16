@@ -98,7 +98,7 @@
     opacity: 0; transform: scale(0.6); transition: opacity 0.6s var(--ease), transform 0.8s var(--spring);
     pointer-events: none;
   }
-  .on .aura { opacity: var(--glow); transform: scale(1); animation: drift 9s ease-in-out infinite; }
+  .on .aura { opacity: var(--glow); transform: scale(1); }
   .top { display: flex; align-items: center; gap: 14px; }
   .txt { display: flex; flex-direction: column; min-width: 0; }
   .orb {

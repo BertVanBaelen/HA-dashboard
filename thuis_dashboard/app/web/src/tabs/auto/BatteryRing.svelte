@@ -64,7 +64,6 @@
   .flow { stroke: rgba(255, 255, 255, 0.55); animation: flow 1.1s linear infinite; }
   @keyframes flow { to { stroke-dashoffset: -28; } }
   .target { stroke: var(--text); stroke-width: 3; stroke-linecap: round; opacity: 0.7; }
-  .charging { animation: breathe 2.6s ease-in-out infinite; }
   @keyframes breathe {
     0%, 100% { filter: drop-shadow(0 14px 30px color-mix(in srgb, var(--rc) 30%, transparent)); }
     50% { filter: drop-shadow(0 10px 44px color-mix(in srgb, var(--rc) 70%, transparent)); }
@@ -73,7 +72,7 @@
   .pct { font-size: calc(var(--size) * 0.26); font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
   .pct small { font-size: 0.4em; font-weight: 700; color: var(--text-2); margin-left: 2px; }
   .lbl { text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
-  .bolt { color: #facc15; display: grid; place-items: center; animation: bolt 1.4s ease-in-out infinite; filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.8)); }
+  .bolt { color: #facc15; display: grid; place-items: center; filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.8)); }
   @keyframes bolt {
     0%, 100% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.25); opacity: 0.75; }

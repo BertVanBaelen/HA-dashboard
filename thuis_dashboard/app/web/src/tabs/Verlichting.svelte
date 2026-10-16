@@ -198,7 +198,7 @@
     position: absolute; inset: -40%; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 0.8s var(--ease);
     background: radial-gradient(circle at 20% 30%, var(--h1), transparent 40%), radial-gradient(circle at 80% 70%, var(--h2), transparent 40%);
   }
-  .hero.on .hero-bg { opacity: 1; animation: swirl 14s linear infinite; }
+  .hero.on .hero-bg { opacity: 1; }
   .hero-row { gap: 14px; }
   .hero h2 { font-size: 1.15rem; }
   .hero-ic {
@@ -239,7 +239,6 @@
   .b2 { background: var(--p2); right: -10px; bottom: -14px; }
   .preset:hover .b1, .preset.active .b1 { transform: translate(8px, 6px) scale(1.1); }
   .preset:hover .b2, .preset.active .b2 { transform: translate(-8px, -4px) scale(1.1); }
-  .preset.active .blob { animation: breathe 3.5s ease-in-out infinite; }
   .pic {
     position: relative; width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center;
     background: color-mix(in srgb, var(--surface-solid) 70%, transparent); color: var(--text);

@@ -100,6 +100,8 @@ export const LIGHTS = [
 export const MEDIA = {
   tvPower: 'media_player.slaapkamer_bert_tv',
   tvRemote: 'remote.55mled810_12_remote',
+  // Philips TV remote keys (remote.send_command) – work regardless of what the Chromecast reports
+  tvKeys: { playPause: 'PlayPause', rewind: 'Rewind', forward: 'FastForward' },
   chromecast: 'media_player.chromecast_hd',
   chromecastRemote: 'remote.chromecast_hd',
   tvActive: 'input_boolean.tv_actief',
@@ -154,6 +156,13 @@ export function tvIsOn(getState) {
   const cast = getState(MEDIA.chromecast)?.state;
   if (UNAVAILABLE.includes(remote) && UNAVAILABLE.includes(cast)) return getState(MEDIA.tvActive)?.state === 'on';
   return remote === 'on' || ['playing', 'paused', 'idle', 'buffering', 'on'].includes(cast);
+}
+
+/** Stereo status follows the MusicCast player itself; input_boolean only as fallback. */
+export function stereoIsOn(getState) {
+  const st = getState(MEDIA.stereo)?.state;
+  if (st == null || UNAVAILABLE.includes(st)) return getState(MEDIA.stereoActive)?.state === 'on';
+  return !['off', 'standby'].includes(st);
 }
 
 export const DEFAULT_RADIOS = [

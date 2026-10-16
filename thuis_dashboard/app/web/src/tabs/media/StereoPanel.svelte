@@ -231,7 +231,7 @@
   }
   .pp:active { transform: scale(0.9); }
   .pp:disabled { opacity: 0.5; }
-  .pp.playing { --pulse: var(--accent); animation: pulse-ring 2.2s infinite; }
+  .pp.playing { --pulse: var(--accent); }
   .volwrap { padding: 0 16px 16px; }
   .sources { gap: 10px; }
 
@@ -251,7 +251,7 @@
     background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--rc) 70%, #fff), var(--rc) 60%, color-mix(in srgb, var(--rc) 70%, #000));
     box-shadow: 0 8px 18px -8px var(--rc);
   }
-  .radio.on .badge { --pulse: var(--rc); animation: pulse-ring 2s infinite; }
+  .radio.on .badge { --pulse: var(--rc); }
   .rname { font-size: 0.8rem; max-width: 100%; }
   .eq { display: flex; align-items: flex-end; gap: 3px; height: 20px; }
   .eq i { width: 4px; border-radius: 2px; background: #fff; animation: eq 0.8s ease-in-out infinite alternate; }
