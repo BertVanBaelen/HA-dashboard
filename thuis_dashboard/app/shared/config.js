@@ -165,13 +165,7 @@ export function stereoIsOn(getState) {
   return !['off', 'standby'].includes(st);
 }
 
-export const DEFAULT_RADIOS = [
-  { id: 'vrtnws', name: 'VRT NWS', url: 'http://icecast.vrtcdn.be/vrtnws-high.mp3' },
-  { id: 'stubru', name: 'Studio Brussel', url: 'http://icecast.vrtcdn.be/stubru-high.mp3' },
-  { id: 'mnm', name: 'MNM', url: 'http://icecast.vrtcdn.be/mnm-high.mp3' },
-  { id: 'radio1', name: 'Radio 1', url: 'http://icecast.vrtcdn.be/radio1-high.mp3' },
-  { id: 'radio2', name: 'Radio 2', url: 'http://icecast.vrtcdn.be/ra2ant-high.mp3' },
-];
+export const DEFAULT_RADIOS = [];
 
 const CAR = 'mg_mg4_electric';
 export const CAR_ENTITIES = {

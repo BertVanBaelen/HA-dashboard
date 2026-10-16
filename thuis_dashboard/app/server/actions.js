@@ -9,7 +9,6 @@ export class Actions {
     this.store = store;
     this.log = log;
     this.lastArrival = new Map();
-    this.radioCache = null;
   }
 
   isOn(entityId) {
@@ -108,9 +107,29 @@ export class Actions {
     return lights;
   }
 
-  async playRadio(url) {
-    if (!/^https?:\/\//.test(url)) throw new Error('Ongeldige stream-URL');
-    await this.ha.callService('media_player', 'play_media', { media_content_id: url, media_content_type: 'music' }, { entity_id: MEDIA.stereo });
+  /** Plays a MusicCast media-browser item (Net Radio station or preset) on the stereo. */
+  async playRadio(mediaId) {
+    if (!mediaId || typeof mediaId !== 'string') throw new Error('Zender niet gevonden, kies ze opnieuw via "Andere radio"');
+    if (!stereoIsOn((id) => this.ha.getState(id))) await this.#script(MEDIA.scripts.stereoOn);
+    await this.ha.callService('media_player', 'play_media', { media_content_id: mediaId, media_content_type: 'music' }, { entity_id: MEDIA.stereo });
+  }
+
+  /** Browses the stereo's own media tree (Net Radio, presets, ...). */
+  async browseStereo(mediaId) {
+    if (!stereoIsOn((id) => this.ha.getState(id))) await this.#script(MEDIA.scripts.stereoOn);
+    const msg = { type: 'media_player/browse_media', entity_id: MEDIA.stereo };
+    if (mediaId) msg.media_content_id = mediaId;
+    const res = await this.ha.send(msg);
+    return {
+      title: res.title ?? '',
+      mediaId: res.media_content_id ?? null,
+      children: (res.children ?? []).map((c) => ({
+        title: c.title,
+        mediaId: c.media_content_id,
+        canPlay: !!c.can_play,
+        canExpand: !!c.can_expand,
+      })),
+    };
   }
 
   async selectStereoSource(key) {
@@ -130,7 +149,7 @@ export class Actions {
       steps.push(['Stereo', () => this.mediaMode('stereo')]);
       if (st.radio) {
         const radio = this.store.getHousehold().radios.find((r) => r.id === st.radio);
-        if (radio) steps.push(['Radio', () => this.playRadio(radio.url)]);
+        if (radio) steps.push(['Radio', () => this.playRadio(radio.mediaId)]);
       } else if (st.source) {
         steps.push(['Bron', () => this.selectStereoSource(st.source)]);
       }
@@ -150,20 +169,6 @@ export class Actions {
       await this.ha.callService('climate', 'set_temperature', { temperature, hvac_mode: 'heat' }, { entity_id: room.climate });
     }
     return { room: room.name, temperature };
-  }
-
-  async searchRadios() {
-    if (this.radioCache && Date.now() - this.radioCache.at < 24 * 3600 * 1000) return this.radioCache.list;
-    const url = 'https://de1.api.radio-browser.info/json/stations/search?countrycode=BE&language=dutch&hidebroken=true&order=clickcount&reverse=true&limit=150';
-    const res = await fetch(url, { headers: { 'User-Agent': 'ThuisDashboard/0.1' } });
-    if (!res.ok) throw new Error(`Radio Browser: ${res.status}`);
-    const list = (await res.json())
-      .filter((s) => s.url_resolved)
-      .map((s) => ({ id: s.stationuuid, name: s.name.trim(), url: s.url_resolved, favicon: s.favicon || null }));
-    const seen = new Set();
-    const unique = list.filter((s) => (seen.has(s.name.toLowerCase()) ? false : seen.add(s.name.toLowerCase())));
-    this.radioCache = { at: Date.now(), list: unique };
-    return unique;
   }
 
   // ---- Arrival notification ------------------------------------------------

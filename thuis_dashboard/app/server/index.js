@@ -201,10 +201,10 @@ async function runAction(client, name, args) {
     case 'mediaMode': return actions.mediaMode(args.mode);
     case 'applyPreset': return actions.applyPreset(args.id);
     case 'capturePreset': return actions.capturePreset();
-    case 'playRadio': return actions.playRadio(args.url);
+    case 'playRadio': return actions.playRadio(args.mediaId);
     case 'selectStereoSource': return actions.selectStereoSource(args.key);
     case 'heatRoom': return actions.heatRoom(args.room);
-    case 'searchRadios': return actions.searchRadios();
+    case 'browseStereo': return actions.browseStereo(args.mediaId);
     case 'setupStartDashboard': return setupStartDashboard();
     case 'testArrival': {
       const person = actions.personForUser(client.user.id);

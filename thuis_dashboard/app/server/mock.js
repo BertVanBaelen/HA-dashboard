@@ -296,6 +296,14 @@ export class MockHaClient extends EventEmitter {
   }
 
   async send(msg) {
+    if (msg.type === 'media_player/browse_media') {
+      const item = (title, id, canPlay, canExpand) => ({ title, media_content_id: id, can_play: canPlay, can_expand: canExpand });
+      const id = msg.media_content_id;
+      if (!id) return { title: 'Living Room Stereo', media_content_id: '', children: [item('Net Radio', 'input:net_radio', false, true), item('Favorieten', 'presets', false, true), item('Server', 'input:server', false, true)] };
+      if (id === 'input:net_radio') return { title: 'Net Radio', media_content_id: id, children: [item('Bookmarks', 'list:net_radio:bm:-1', false, true), item('Locatie', 'list:net_radio:loc:-1', false, true)] };
+      if (id.startsWith('list:net_radio:')) return { title: 'Zenders', media_content_id: id, children: ['VRT NWS', 'Studio Brussel', 'MNM', 'Radio 1', 'Radio 2', 'Joe', 'Q-music'].map((n, i) => item(n, `list:net_radio:${id.split(':')[2]}:s:${i}`, true, false)) };
+      return { title: 'Leeg', media_content_id: id, children: [] };
+    }
     if (msg.type === 'lovelace/resources' || msg.type === 'lovelace/dashboards/list') return [];
     if (msg.type.startsWith('lovelace/')) return null;
     if (msg.type === 'todo/item/list') return { items: this.todos[msg.entity_id] ?? [] };

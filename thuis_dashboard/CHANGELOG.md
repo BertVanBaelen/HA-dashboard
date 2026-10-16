@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+- Stereo: radio speelt nu via Net Radio van de MusicCast-stereo zelf (niet meer via de server-/URL-functie).
+  In 'Andere radio' blader je door het Net Radio-menu van de stereo; tik op de ster om een favoriet toe te voegen.
+  Oude favoriete zenders (stream-URL's) worden verwijderd: voeg ze opnieuw toe via Net Radio.
+
 ## 0.3.0
 - Media: play/pauze, terugspoelen en vooruitspoelen sturen nu altijd de TV-afstandsbediening aan.
   Pijlen zijn de standaard-afstandsbediening. Scrollen werkt ook als je vinger op de knoppen begint.

@@ -46,6 +46,7 @@ function normalizeHousehold(h) {
   return {
     ...d,
     ...h,
+    radios: (h?.radios ?? d.radios).filter((r) => r.mediaId),
     comfort: { ...d.comfort, ...(h?.comfort ?? {}) },
     sensorLabels: { ...d.sensorLabels, ...(h?.sensorLabels ?? {}) },
     carFlags: { ...d.carFlags, ...(h?.carFlags ?? {}) },

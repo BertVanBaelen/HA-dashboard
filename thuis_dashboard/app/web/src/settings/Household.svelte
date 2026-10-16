@@ -44,26 +44,6 @@
   }
 
   // Radios
-  let radioQuery = $state('');
-  let radioResults = $state(/** @type {any[]|null} */ (null));
-  let radioLoading = $state(false);
-  let manualName = $state('');
-  let manualUrl = $state('');
-  async function loadRadios() {
-    if (radioResults) return;
-    radioLoading = true;
-    try {
-      radioResults = await action('searchRadios');
-    } finally {
-      radioLoading = false;
-    }
-  }
-  const filteredRadios = $derived(
-    (radioResults ?? []).filter((r) => r.name.toLowerCase().includes(radioQuery.toLowerCase()) && !$household.radios.some((x) => x.url === r.url)).slice(0, 25),
-  );
-  function addRadio(r) {
-    saveHousehold({ radios: [...$household.radios, { id: r.id ?? `r${Date.now().toString(36)}`, name: r.name, url: r.url }] });
-  }
   function removeRadio(id) {
     saveHousehold({ radios: $household.radios.filter((r) => r.id !== id) });
   }
@@ -73,11 +53,6 @@
     if (j < 0 || j >= arr.length) return;
     [arr[i], arr[j]] = [arr[j], arr[i]];
     saveHousehold({ radios: arr });
-  }
-  function addManual() {
-    if (!manualName.trim() || !/^https?:\/\//.test(manualUrl)) return;
-    addRadio({ name: manualName.trim(), url: manualUrl.trim() });
-    manualName = manualUrl = '';
   }
 </script>
 
@@ -146,30 +121,7 @@
     </div>
   {/each}
 </div>
-<div class="group" style="margin-top:10px">
-  <input class="input" placeholder="Zoek een Vlaamse zender…" bind:value={radioQuery} onfocus={loadRadios} />
-  {#if radioLoading}<div class="skeleton" style="height:40px"></div>{/if}
-  {#if radioResults && radioQuery}
-    <div class="results" transition:slide>
-      {#each filteredRadios as r (r.id)}
-        <button class="row result" onclick={() => addRadio(r)}>
-          {#if r.favicon}<img src={r.favicon} alt="" loading="lazy" onerror={(e) => /** @type {HTMLElement} */ (e.currentTarget).remove()} />{/if}
-          <span class="grow ellipsis">{r.name}</span><Icon name="plus" size={18} />
-        </button>
-      {:else}
-        <span class="muted small">Niets gevonden</span>
-      {/each}
-    </div>
-  {/if}
-  <details>
-    <summary class="small muted">Zelf een stream-URL toevoegen</summary>
-    <div class="col" style="margin-top:8px">
-      <input class="input" placeholder="Naam" bind:value={manualName} />
-      <input class="input" placeholder="https://…" bind:value={manualUrl} />
-      <button class="btn soft" onclick={addManual}><Icon name="plus" size={18} />Toevoegen</button>
-    </div>
-  </details>
-</div>
+<p class="muted small" style="margin-top:8px">Zenders toevoegen doe je in de Media-tab: Stereo → Andere radio (Net Radio van de stereo), tik op de ster.</p>
 
 <h4 class="section-title">Auto – functies</h4>
 <div class="group list">
@@ -211,9 +163,4 @@
   .preset:active { transform: scale(0.95); }
   .preset .ellipsis { flex: 1; }
   .preset.add { border-style: dashed; color: var(--accent-text); justify-content: center; }
-  .results { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto; }
-  .result { border: 0; background: none; padding: 8px; border-radius: 10px; cursor: pointer; text-align: left; }
-  .result:hover { background: var(--surface-3); }
-  .result img { width: 24px; height: 24px; border-radius: 6px; object-fit: contain; background: #fff; }
-  summary { cursor: pointer; }
 </style>

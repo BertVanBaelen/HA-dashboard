@@ -21,7 +21,7 @@
   const a = $derived(stereo?.attributes ?? {});
   const playing = $derived(stereo?.state === 'playing' || stereo?.state === 'buffering');
   const sourceList = $derived(/** @type {string[]} */ (a.source_list ?? []));
-  const radios = $derived(/** @type {{id:string,name:string,url:string}[]} */ ($household?.radios ?? []));
+  const radios = $derived(/** @type {{id:string,name:string,mediaId:string}[]} */ ($household?.radios ?? []));
 
   const matchSource = (/** @type {typeof MEDIA.stereoSources[number]} */ src, /** @type {string} */ name) =>
     src.match.some((m) => name.toLowerCase().replace(/\s+/g, ' ') === m || name.toLowerCase().includes(m));
@@ -38,15 +38,14 @@
   let advanced = $state(false);
   let sheetOpen = $state(false);
 
-  const currentRadioUrl = $derived.by(() => {
-    const id = String(a.media_content_id ?? '');
-    const title = String(a.media_title ?? '').toLowerCase();
-    const hit = radios.find((r) => id === r.url || title === r.url || (title && title === r.name.toLowerCase()));
-    if (hit) return hit.url;
-    if (id.startsWith('http') || title.startsWith('http')) return id.startsWith('http') ? id : title;
+  // MusicCast reports the station name in title/artist/album while Net Radio plays
+  const currentRadioId = $derived.by(() => {
+    const fields = [a.media_title, a.media_artist, a.media_album_name].map((v) => String(v ?? '').trim().toLowerCase()).filter(Boolean);
+    const hit = radios.find((r) => fields.includes(r.name.trim().toLowerCase()));
+    if (hit) return hit.mediaId;
     return playing ? lastRadio : null;
   });
-  const radioName = $derived(radios.find((r) => r.url === currentRadioUrl)?.name ?? '');
+  const radioName = $derived(radios.find((r) => r.mediaId === currentRadioId)?.name ?? '');
 
   async function run(/** @type {string} */ key, /** @type {() => Promise<any>} */ fn) {
     busy = key;
@@ -58,10 +57,10 @@
     }
   }
 
-  const playRadio = (/** @type {{name:string,url:string}} */ r) =>
-    run(`radio:${r.url}`, async () => {
-      await action('playRadio', { url: r.url }, `${r.name} wordt afgespeeld`);
-      lastRadio = r.url;
+  const playRadio = (/** @type {{name:string,mediaId:string}} */ r) =>
+    run(`radio:${r.mediaId}`, async () => {
+      await action('playRadio', { mediaId: r.mediaId }, `${r.name} wordt afgespeeld`);
+      lastRadio = r.mediaId;
       sheetOpen = false;
     });
 
@@ -119,7 +118,7 @@
           sub={src.available ? (src.current ? 'Actief' : '') : 'Niet gevonden'}
           iconPath={SOURCE_ICONS[/** @type {keyof typeof SOURCE_ICONS} */ (src.key)] ?? mdiAudioInputRca}
           color={SOURCE_COLORS[/** @type {keyof typeof SOURCE_COLORS} */ (src.key)] ?? ''}
-          active={src.current && !currentRadioUrl}
+          active={src.current && !currentRadioId}
           busy={busy === `src:${src.key}`}
           disabled={na || !src.available}
           onclick={() => selectSource(src)}
@@ -128,21 +127,21 @@
     </div>
   </Card>
 
-  <Card title="Radio" icon="radio" subtitle={radioName ? `Nu: ${radioName}` : 'Vlaamse zenders'}>
+  <Card title="Radio" icon="radio" subtitle={radioName ? `Nu: ${radioName}` : 'Net Radio'}>
     {#if radios.length}
       <div class="radios">
         {#each radios as r, i (r.id)}
-          {@const on = currentRadioUrl === r.url}
+          {@const on = currentRadioId === r.mediaId}
           <button
             class="radio"
             class:on
-            class:busy={busy === `radio:${r.url}`}
+            class:busy={busy === `radio:${r.mediaId}`}
             style="--rc:{RADIO_COLORS[/** @type {keyof typeof RADIO_COLORS} */ (r.id)] ?? colorFor(r.id)};--d:{i * 50}ms"
             disabled={na}
             onclick={() => playRadio(r)}
           >
             <span class="badge">
-              {#if busy === `radio:${r.url}`}<span class="spinner"></span>
+              {#if busy === `radio:${r.mediaId}`}<span class="spinner"></span>
               {:else if on}<span class="eq"><i></i><i></i><i></i></span>
               {:else}{r.name.replace(/^(Radio|Studio)\s+/i, '').slice(0, 3).toUpperCase()}{/if}
             </span>
@@ -151,7 +150,7 @@
         {/each}
       </div>
     {:else}
-      <p class="muted small">Nog geen radiozenders. Voeg ze toe via “Andere radio” of in Instellingen.</p>
+      <p class="muted small">Nog geen radiozenders. Open “Andere radio”, blader door Net Radio van de stereo en tik op de ster om favorieten toe te voegen.</p>
     {/if}
     <button class="btn soft block other" disabled={na} onclick={() => (sheetOpen = true)}>
       <Icon path={mdiRadioTower} size={20} />Andere radio
@@ -220,7 +219,7 @@
   </Card>
 </div>
 
-<RadioSheet bind:open={sheetOpen} currentUrl={currentRadioUrl} onplay={playRadio} />
+<RadioSheet bind:open={sheetOpen} currentId={currentRadioId} onplay={playRadio} />
 
 <style>
   .playrow { display: flex; justify-content: center; }
