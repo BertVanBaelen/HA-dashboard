@@ -1,5 +1,5 @@
 name: Thuis Dashboard
-version: "0.3.2"
+version: "0.3.3"
 slug: thuis_dashboard
 description: Mobiel dashboard voor ons huis – tabs per onderwerp, per gebruiker instelbaar.
 url: https://github.com/BertVanBaelen/HA-dashboard
@@ -14,6 +14,7 @@ ingress_port: 8099
 ingress_stream: true
 panel_icon: mdi:view-dashboard
 panel_title: Dashboard
+panel_admin: false
 homeassistant_api: true
 map:
   - type: homeassistant_config

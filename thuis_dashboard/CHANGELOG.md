@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.3
+- Fix: het dashboardpaneel is ook zichtbaar voor niet-beheerders, zodat hun startpagina kan doorverwijzen.
+
 ## 0.3.2
 - Fix: Net Radio bladeren gaf "media_content_type and media_content_id must be provided together".
   Favorieten: Andere radio → Net Radio → Podcasts → Favorites.
