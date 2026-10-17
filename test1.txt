@@ -1,0 +1,31 @@
+general:
+- is it possible to put this screen on the homepage? in the settings a download button to open it direcectly
+- hide the scrollbar on my phone
+
+home tab:
+- I want a graph on how much it is going to rain at what hour for coming 5 hours
+- put some fun icons like shorts, a sweater, ubrella based on what is needed based on the weather
+- no references to tado necessary, just climate info. we do not use the tado stuff but manage it with home assistant
+
+climate tab: 
+- remove the tado references. just put the info in there, the scenes are managed by home assistant
+- make the thermostats of the rooms like a knob you can turn.
+- you don't need to show the second sensor in the bedroom, 1 stat is enough
+- put the off button to the most left
+- make a graphic with a house, the outside temp, inside temp, sun amount and window open
+
+media tab: 
+- the tv button works and turns on the tv, but the button does not stay there. the tv button should be based on the chromecast status
+
+
+car tab:
+- the seat warming should be a dropdown
+
+calendar tab:
+- I want in the settings to set the color of calendars
+- I want to be able to see other persons calendars
+
+graph tab:
+- kamersensor can be ignored. just use the thermostat temps
+- also add the amount of sun in the outside graph
+- also add the batteries of the personal devices (tablet not needed)
