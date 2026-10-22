@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1
+- Spotify: kies zelf het **uitvoertoestel** (tik op "Speelt op …" bovenaan de Spotify-kaart). De keuze wordt per
+  gebruiker onthouden; alles wat je start speelt daarna op dat toestel.
+- Spotify: "Naar eetkamer" geeft geen SAM1005E-fout meer maar een duidelijke melding wanneer de stereo slaapt, en
+  opent meteen de toestelkeuze.
+- Spotify: afspelen werkt weer (hervat op het actieve toestel of brengt de muziek naar het gekozen toestel).
+
 ## 0.5.0
 - Media: **Spotify-kaart** (via SpotifyPlus) wanneer de stereo op Spotify staat: afspelen/pauze, vorige/volgende,
   spoelen, shuffle, herhalen, volume, Liked Songs, wachtrij, zoeken en je bibliotheek (afspeellijsten, albums,

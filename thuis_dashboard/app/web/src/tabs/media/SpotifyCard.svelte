@@ -1,8 +1,9 @@
 <script>
-  import { fade, fly } from 'svelte/transition';
+  import { fade, fly, slide } from 'svelte/transition';
   import {
     mdiSpotify, mdiPlay, mdiPause, mdiSkipNext, mdiSkipPrevious, mdiShuffleVariant, mdiRepeat, mdiRepeatOnce, mdiRepeatOff,
     mdiHeart, mdiHeartOutline, mdiPlaylistMusic, mdiMagnify, mdiClose, mdiSpeaker, mdiMusicNoteOff, mdiVolumeHigh, mdiAccountMusic,
+    mdiCastAudio, mdiCheck, mdiRefresh, mdiSleep, mdiChevronDown,
   } from '@mdi/js';
   import { MEDIA } from '$shared/config.js';
   import { states, prefs, savePrefs, unavailable } from '../../lib/api.js';
@@ -15,7 +16,7 @@
   import SpotifyTile from './SpotifyTile.svelte';
   import SpotifySheet from './SpotifySheet.svelte';
   import SpotifyQueueSheet from './SpotifyQueueSheet.svelte';
-  import { findSpotify, spotifyAccounts, onStereoDevice, sp, spQuiet, mmss, httpImage, SPOTIFY_GREEN } from './spotify.js';
+  import { findSpotify, spotifyAccounts, sameTarget, targetName, sp, spQuiet, mmss, httpImage, SPOTIFY_GREEN } from './spotify.js';
 
   /** @typedef {import('./spotify.js').SpItem} SpItem */
 
@@ -25,7 +26,8 @@
   const na = $derived(!s || unavailable(s));
   const playing = $derived(s?.state === 'playing');
   const device = $derived(/** @type {string|undefined} */ (a.sp_device_name));
-  const onStereo = $derived(onStereoDevice(device));
+  const target = $derived(targetName($prefs));
+  const onTarget = $derived(sameTarget(device, target));
   const nowUri = $derived(String(a.media_content_id ?? ''));
   const art = $derived(httpImage(a.sp_nowplaying_image_url) ?? (a.entity_picture ? String(a.entity_picture) : null));
   const title = $derived(a.media_title ? String(a.media_title) : '');
@@ -55,7 +57,9 @@
     busy = key;
     try {
       await fn();
-    } catch {
+    } catch (err) {
+      // Device asleep or missing: offer the other devices right away
+      if (/slaapt|niet gevonden/i.test(String(/** @type {any} */ (err)?.message ?? ''))) openDevices();
     } finally {
       busy = '';
     }
@@ -63,7 +67,35 @@
   const ctl = (/** @type {string} */ cmd, /** @type {any} */ value = undefined, /** @type {string|undefined} */ ok = undefined) =>
     run(cmd, () => sp('control', { cmd, value }, ok));
 
-  const togglePlay = () => ctl(playing && onStereo ? 'pause' : 'play');
+  const togglePlay = () => ctl(playing ? 'pause' : 'play');
+
+  // ---- Output device ----
+  let devicesOpen = $state(false);
+  let devicesBusy = $state(false);
+  let devicesErr = $state('');
+  /** @type {{id:string,name:string,active:boolean,ready:boolean,stereo:boolean}[]} */
+  let devices = $state([]);
+  async function loadDevices() {
+    devicesBusy = true;
+    devicesErr = '';
+    try {
+      devices = (await spQuiet('devices')) ?? [];
+    } catch (err) {
+      devicesErr = String(/** @type {any} */ (err)?.message ?? 'Toestellen laden mislukt');
+    } finally {
+      devicesBusy = false;
+    }
+  }
+  function openDevices() {
+    devicesOpen = true;
+    loadDevices();
+  }
+  async function chooseDevice(/** @type {{name:string,stereo:boolean}} */ d) {
+    await savePrefs({ spotifyDevice: d.stereo ? null : d.name }).catch(() => {});
+    devicesOpen = false;
+    // Move what's playing now; otherwise the next play goes there
+    if (device && !sameTarget(device, d.name)) ctl('transfer', d.name, `Spotify speelt nu op ${d.name}`);
+  }
   const NEXT_REPEAT = { off: 'all', all: 'one', one: 'off' };
   const REPEAT_ICON = { off: mdiRepeatOff, all: mdiRepeat, one: mdiRepeatOnce };
 
@@ -186,7 +218,7 @@
   let queueOpen = $state(false);
 </script>
 
-<Card pad={false} glow={playing && onStereo} accent={playing && onStereo ? SPOTIFY_GREEN : ''}>
+<Card pad={false} glow={playing && onTarget} accent={playing && onTarget ? SPOTIFY_GREEN : ''}>
   {#if !s}
     <div class="pad">
       <EmptyState iconPath={mdiSpotify} title="SpotifyPlus niet gevonden">
@@ -198,22 +230,53 @@
       {#if art}<div class="bg" style="background-image:url('{art}')" transition:fade></div>{/if}
       <div class="top row">
         <span class="logo"><Icon path={mdiSpotify} size={22} /></span>
-        <span class="grow small dev ellipsis">
-          {#if na}Spotify niet beschikbaar
-          {:else if device}<Icon path={mdiSpeaker} size={16} /> Speelt op <b>{device}</b>
-          {:else}Geen actief apparaat{/if}
-        </span>
+        <button class="grow small dev" disabled={na} aria-expanded={devicesOpen} onclick={() => (devicesOpen ? (devicesOpen = false) : openDevices())}>
+          <Icon path={mdiCastAudio} size={16} />
+          <span class="ellipsis">
+            {#if na}Spotify niet beschikbaar
+            {:else if device}Speelt op <b>{device}</b>
+            {:else}Uitvoer: <b>{target}</b>{/if}
+          </span>
+          <Icon path={mdiChevronDown} size={16} class={devicesOpen ? 'flip' : ''} />
+        </button>
         {#if accounts.length > 1}
           <select class="acct" aria-label="Spotify-account" value={s?.entity_id} onchange={(e) => savePrefs({ spotifyEntity: e.currentTarget.value }).catch(() => {})}>
             {#each accounts as acc (acc.id)}<option value={acc.id}>{acc.name}</option>{/each}
           </select>
         {/if}
-        {#if !na && !onStereo}
-          <button class="btn sm sp" disabled={!!busy} onclick={() => ctl('transfer', undefined, `Spotify speelt nu op ${MEDIA.spotify.device}`)}>
-            {#if busy === 'transfer'}<span class="spinner"></span>{/if}Naar {MEDIA.spotify.device.toLowerCase()}
+        {#if !na && device && !onTarget}
+          <button class="btn sm sp" disabled={!!busy} onclick={() => ctl('transfer', target, `Spotify speelt nu op ${target}`)}>
+            {#if busy === 'transfer'}<span class="spinner"></span>{/if}Naar {target.toLowerCase()}
           </button>
         {/if}
       </div>
+
+      {#if devicesOpen}
+        <div class="devices" transition:slide={{ duration: 220 }}>
+          <div class="row spread small">
+            <b>Afspelen op</b>
+            <button class="btn icon ghost sm" aria-label="Vernieuwen" disabled={devicesBusy} onclick={loadDevices}>
+              {#if devicesBusy}<span class="spinner"></span>{:else}<Icon path={mdiRefresh} size={18} />{/if}
+            </button>
+          </div>
+          {#if devicesErr}<span class="small muted">{devicesErr}</span>
+          {:else if !devices.length && !devicesBusy}<span class="small muted">Geen Spotify-toestellen gevonden.</span>{/if}
+          {#each devices as d (d.id)}
+            {@const chosen = sameTarget(d.name, target)}
+            <button class="devrow" class:chosen disabled={!!busy} onclick={() => chooseDevice(d)}>
+              <Icon path={d.ready ? mdiSpeaker : mdiSleep} size={20} />
+              <span class="grow ellipsis">{d.name}{#if d.stereo}<span class="tiny faint"> · stereo</span>{/if}</span>
+              {#if d.active}<span class="tag">Actief</span>{:else if !d.ready}<span class="tag sleep">Slaapt</span>{/if}
+              {#if chosen}<Icon path={mdiCheck} size={18} />{/if}
+            </button>
+          {/each}
+          {#if devices.some((d) => !d.ready)}
+            <p class="tiny faint hint">
+              Een slapend toestel kan Spotify niet zelf wekken. Kies het één keer in de Spotify-app, of vul de Spotify Connect-login in bij de opties van SpotifyPlus.
+            </p>
+          {/if}
+        </div>
+      {/if}
 
       <div class="now">
         {#key art}
@@ -256,9 +319,9 @@
           <Icon path={mdiShuffleVariant} size={22} />
         </button>
         <button class="btn icon ghost" aria-label="Vorige" disabled={na} onclick={() => ctl('previous')}><Icon path={mdiSkipPrevious} size={30} /></button>
-        <button class="pp" aria-label={playing && onStereo ? 'Pauze' : 'Afspelen'} disabled={na || busy === 'play' || busy === 'pause'} onclick={togglePlay}>
+        <button class="pp" aria-label={playing ? 'Pauze' : 'Afspelen'} disabled={na || busy === 'play' || busy === 'pause'} onclick={togglePlay}>
           {#if busy === 'play' || busy === 'pause'}<span class="spinner big"></span>
-          {:else if playing && onStereo}<Icon path={mdiPause} size={34} />
+          {:else if playing}<Icon path={mdiPause} size={34} />
           {:else}<Icon path={mdiPlay} size={34} />{/if}
         </button>
         <button class="btn icon ghost" aria-label="Volgende" disabled={na} onclick={() => ctl('next')}><Icon path={mdiSkipNext} size={30} /></button>
@@ -368,12 +431,21 @@
 
 <style>
   .pad { padding: 16px; }
-  .player { position: relative; overflow: hidden; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 12px; border-radius: inherit; }
+  .player { position: relative; overflow: hidden; overflow: clip; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 12px; border-radius: inherit; }
   .bg { position: absolute; inset: -40px; background-size: cover; background-position: center; filter: blur(40px) saturate(1.4); opacity: 0.28; pointer-events: none; }
   .player > :not(.bg) { position: relative; }
   .top { gap: 8px; }
   .logo { color: var(--sp); display: grid; }
-  .dev { display: flex; align-items: center; gap: 4px; color: var(--text-2); }
+  .dev { display: flex; align-items: center; gap: 5px; min-width: 0; padding: 4px 6px; margin-left: -6px; border: 0; border-radius: 10px; background: none; color: var(--text-2); font: inherit; text-align: left; cursor: pointer; }
+  .dev:hover:not(:disabled) { background: color-mix(in srgb, var(--surface-3) 60%, transparent); }
+  .dev :global(.flip) { transform: rotate(180deg); }
+  .devices { display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: 14px; background: color-mix(in srgb, var(--surface-2) 85%, transparent); border: 1px solid var(--border); }
+  .devrow { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 0; border-radius: 10px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .devrow:hover:not(:disabled) { background: var(--surface-3); }
+  .devrow.chosen { color: var(--sp); font-weight: 700; }
+  .tag { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--sp) 18%, transparent); color: var(--sp); }
+  .tag.sleep { background: var(--surface-3); color: var(--text-3); }
+  .hint { margin: 4px 4px 0; }
   .acct { max-width: 40%; padding: 4px 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
   .sp { background: var(--sp, #1db954); color: #fff; border: 0; gap: 6px; box-shadow: 0 8px 20px -10px #1db954; }
   .now { display: flex; align-items: center; gap: 14px; min-width: 0; }

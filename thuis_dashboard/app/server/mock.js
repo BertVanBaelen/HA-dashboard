@@ -178,6 +178,11 @@ function fakeState(id) {
 const SP_ENTITY = 'media_player.spotifyplus_bert';
 const SP_ENTITY_2 = 'media_player.spotifyplus_marjo';
 const SP_ENTITIES = [SP_ENTITY, SP_ENTITY_2];
+const SP_DEVICES = [
+  { Id: 'mock-eetkamer', Name: 'Eetkamer' },
+  { Id: 'mock-phone', Name: 'Pixel van Bert' },
+  { Id: 'mock-keuken', Name: 'Keuken speaker' },
+];
 const spId = (p, i) => `${p}${String(i).padStart(4, '0')}MockId00000000`.slice(0, 22);
 const spImg = (seed) => `https://picsum.photos/seed/${seed}/300`;
 const SP = (() => {
@@ -316,6 +321,18 @@ export class MockHaClient extends EventEmitter {
     });
   }
 
+  /** Output device for a SpotifyPlus call; MOCK_SP_SLEEP=1 simulates a dormant stereo without Spotify Connect login. */
+  #spDevice(ent, deviceId) {
+    const cur = this.states.get(ent)?.attributes;
+    const want = String(deviceId ?? cur?.sp_device_id ?? 'mock-eetkamer').toLowerCase();
+    const dev = SP_DEVICES.find((d) => d.Id.toLowerCase() === want || d.Name.toLowerCase() === want);
+    if (!dev) throw new Error(`Device "${deviceId}" not found`);
+    if (dev.Id === 'mock-eetkamer' && process.env.MOCK_SP_SLEEP === '1' && cur?.sp_device_id !== dev.Id) {
+      throw new Error("SAM1005E - 'spotifyConnectUsername' configuration option was not supplied; cannot activate Spotify Connect device \"Eetkamer\"");
+    }
+    return { sp_device_name: dev.Name, sp_device_id: dev.Id };
+  }
+
   #spotify(service, data, ent) {
     const s = this.states.get(ent);
     const page = (items) => ({ items, total: items.length, limit: items.length });
@@ -323,7 +340,13 @@ export class MockHaClient extends EventEmitter {
     const byUri = (uri) => SP.tracks.find((t) => t.uri === uri);
     switch (service) {
       case 'get_spotify_connect_devices':
-        return { Items: [{ Id: 'mock-eetkamer', Name: 'Eetkamer', IsActiveDevice: s?.attributes.sp_device_name === 'Eetkamer' }, { Id: 'mock-phone', Name: 'Pixel van Bert', IsActiveDevice: s?.attributes.sp_device_name !== 'Eetkamer' }] };
+        return {
+          Items: SP_DEVICES.map((d) => ({
+            ...d,
+            IsActiveDevice: s?.attributes.sp_device_id === d.Id,
+            IsInDeviceList: !(d.Id === 'mock-eetkamer' && process.env.MOCK_SP_SLEEP === '1') || s?.attributes.sp_device_id === d.Id,
+          })),
+        };
       case 'get_playlist_favorites': return page(ent === SP_ENTITY ? SP.playlists : [...SP.playlists].reverse().slice(0, 3).map((p) => ({ ...p, owner: { display_name: 'Marjo' } })));
       case 'get_album_favorites': return saved(SP.albums, 'album');
       case 'get_artists_followed': return page(SP.artists);
@@ -347,14 +370,21 @@ export class MockHaClient extends EventEmitter {
       case 'check_track_favorites': return Object.fromEntries(String(data.ids).split(',').map((id) => [id, SP.liked.has(id)]));
       case 'save_track_favorites': String(data.ids).split(',').forEach((id) => SP.liked.add(id)); return null;
       case 'remove_track_favorites': String(data.ids).split(',').forEach((id) => SP.liked.delete(id)); return null;
-      case 'player_media_play_tracks': this.#spotifyPlay(ent, byUri(String(data.uris).split(',')[0]) ?? SP.tracks[0], { sp_context_uri: null, sp_playlist_name: null }); return null;
-      case 'player_media_play_track_favorites': this.#spotifyPlay(ent, SP.tracks[data.shuffle ? 3 : 0], { shuffle: !!data.shuffle, sp_playlist_name: 'Liked Songs' }); return null;
+      case 'player_media_play_tracks': this.#spotifyPlay(ent, byUri(String(data.uris).split(',')[0]) ?? SP.tracks[0], { sp_context_uri: null, sp_playlist_name: null, ...this.#spDevice(ent, data.device_id) }); return null;
+      case 'player_media_play_track_favorites': this.#spotifyPlay(ent, SP.tracks[data.shuffle ? 3 : 0], { shuffle: !!data.shuffle, sp_playlist_name: 'Liked Songs', ...this.#spDevice(ent, data.device_id) }); return null;
       case 'player_media_play_context': {
+        const dev = this.#spDevice(ent, data.device_id);
         const pl = SP.playlists.find((p) => p.uri === data.context_uri) ?? SP.albums.find((p) => p.uri === data.context_uri);
-        this.#spotifyPlay(ent, byUri(data.offset_uri) ?? SP.tracks[0], { sp_context_uri: data.context_uri, sp_playlist_name: pl?.name ?? null, ...(typeof data.shuffle === 'boolean' ? { shuffle: data.shuffle } : {}) });
+        this.#spotifyPlay(ent, byUri(data.offset_uri) ?? SP.tracks[0], { sp_context_uri: data.context_uri, sp_playlist_name: pl?.name ?? null, ...dev, ...(typeof data.shuffle === 'boolean' ? { shuffle: data.shuffle } : {}) });
         return null;
       }
-      case 'player_transfer_playback': this.#set(ent, data.play ? 'playing' : null, { sp_device_name: 'Eetkamer', sp_device_id: 'mock-eetkamer', media_position_updated_at: now() }); return null;
+      case 'player_transfer_playback': this.#set(ent, data.play ? 'playing' : null, { ...this.#spDevice(ent, data.device_id), media_position_updated_at: now() }); return null;
+      case 'player_media_resume': {
+        const dev = this.#spDevice(ent, data.device_id);
+        if (s?.attributes.media_content_id) this.#set(ent, 'playing', { ...dev, media_position_updated_at: now() });
+        else this.#spotifyPlay(ent, SP.tracks[0], dev);
+        return null;
+      }
       default: return null;
     }
   }

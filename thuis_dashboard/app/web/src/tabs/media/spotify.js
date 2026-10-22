@@ -1,5 +1,6 @@
+import { get } from 'svelte/store';
 import { MEDIA } from '$shared/config.js';
-import { action, actionQuiet } from '../../lib/api.js';
+import { action, actionQuiet, prefs } from '../../lib/api.js';
 
 /** @typedef {{type:string,id:string,uri:string,name:string,sub:string,image:string|null,durationMs:number|null,explicit:boolean}} SpItem */
 
@@ -25,10 +26,21 @@ export function findSpotify(/** @type {Record<string, any>} */ all, /** @type {s
 
 export const onStereoDevice = (/** @type {string|undefined} */ name) => !!name && name.toLowerCase().includes(MEDIA.spotify.device.toLowerCase());
 
+/** Output device chosen by this user (null = the stereo). */
+export const chosenDevice = (/** @type {any} */ p) => (typeof p?.spotifyDevice === 'string' && p.spotifyDevice) || null;
+export const targetName = (/** @type {any} */ p) => chosenDevice(p) ?? MEDIA.spotify.device;
+/** Same rule as the backend: names match, and anything containing the stereo's name is the stereo. */
+export const sameTarget = (/** @type {string|undefined} */ name, /** @type {string} */ target) =>
+  !!name && (name.toLowerCase() === target.toLowerCase() || (onStereoDevice(name) && onStereoDevice(target)));
+
+// Playback commands go to the user's chosen output device
+const withDevice = (/** @type {string} */ op, /** @type {Record<string, any>} */ args) =>
+  (op === 'play' || op === 'control') && !('device' in args) ? { ...args, device: chosenDevice(get(prefs)) } : args;
+
 /** Spotify action with error toast (+ optional success toast). */
-export const sp = (/** @type {string} */ op, args = {}, /** @type {string|undefined} */ okText = undefined) => action('spotify', { ...args, op }, okText);
+export const sp = (/** @type {string} */ op, args = {}, /** @type {string|undefined} */ okText = undefined) => action('spotify', { ...withDevice(op, args), op }, okText);
 /** Spotify action without toast (for loading lists). */
-export const spQuiet = (/** @type {string} */ op, args = {}) => actionQuiet('spotify', { ...args, op });
+export const spQuiet = (/** @type {string} */ op, args = {}) => actionQuiet('spotify', { ...withDevice(op, args), op });
 
 export const mmss = (/** @type {number} */ sec) => {
   const t = Math.max(0, Math.floor(sec));

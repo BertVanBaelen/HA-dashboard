@@ -2,7 +2,7 @@ import { MEDIA } from '../shared/config.js';
 
 const ID_RE = /^[A-Za-z0-9]{10,40}$/;
 const URI_RE = /^spotify:(track|album|artist|playlist|show|episode):([A-Za-z0-9]{10,40})$/;
-const DEVICE_TTL_MS = 10 * 60e3;
+const DEVICE_TTL_MS = 2 * 60e3;
 const LIBRARY_KINDS = ['playlists', 'albums', 'artists', 'tracks', 'recent', 'shows'];
 
 const img = (o) =>
@@ -55,6 +55,10 @@ function parseUri(uri) {
 }
 
 const sameDevice = (name) => !!name && name.toLowerCase().includes(MEDIA.spotify.device.toLowerCase());
+/** Same output device by name; any name containing the stereo's name counts as the stereo. */
+const sameTarget = (name, target) => !!name && (name.toLowerCase() === target.toLowerCase() || (sameDevice(name) && sameDevice(target)));
+// SpotifyPlus needs the Spotify Connect login (integration options) to wake a device that Spotify doesn't list yet
+const NEEDS_CONNECT_LOGIN = /SAM1005E|spotifyConnect(Username|Password|LoginId)|configuration option was not supplied/i;
 
 const isSpotifyPlus = (id, s) => id.startsWith('media_player.') && !!s?.attributes && 'sp_user_id' in s.attributes;
 
@@ -73,8 +77,8 @@ export function resolveSpotifyEntity(ha, preferred) {
 }
 
 /**
- * Spotify via the SpotifyPlus integration. Playback always targets the configured
- * Spotify Connect device (the stereo), after the stereo is switched on.
+ * Spotify via the SpotifyPlus integration. Playback targets the user's chosen Spotify Connect
+ * device, by default the stereo (which is switched on and set to its Spotify input first).
  */
 export class Spotify {
   /** @param {{ ha: any, entity: string, log?: any, prepareStereo: () => Promise<void> }} opts */
@@ -83,7 +87,8 @@ export class Spotify {
     this.entity = entity;
     this.log = log;
     this.prepareStereo = prepareStereo;
-    this.device = null;
+    /** @type {Map<string, any>} */
+    this.deviceCache = new Map();
   }
 
   entityId() {
@@ -104,41 +109,63 @@ export class Spotify {
     return this.ha.callService('media_player', service, data, { entity_id: this.entityId() });
   }
 
+  /**
+   * Spotify Connect devices. `ready`: Spotify lists it, so it can play without a wake-up;
+   * a sleeping device needs the Spotify Connect login in the SpotifyPlus options.
+   */
   async devices() {
     const res = await this.#svc('get_spotify_connect_devices', { refresh: true }, true);
-    return (res?.Items ?? []).map((d) => ({ id: d.Id, name: d.Name, active: !!d.IsActiveDevice }));
+    return (res?.Items ?? [])
+      .filter((d) => d?.Name)
+      .map((d) => ({
+        id: d.Id || d.Name,
+        name: d.Name,
+        active: !!d.IsActiveDevice,
+        ready: !!d.IsActiveDevice || d.IsInDeviceList !== false,
+        stereo: sameDevice(d.Name),
+      }));
   }
 
-  /** Spotify Connect id of the stereo; falls back to its name (SpotifyPlus resolves names too). */
-  async #outputDevice() {
-    if (this.device && Date.now() - this.device.at < DEVICE_TTL_MS) return this.device;
-    const want = MEDIA.spotify.device.toLowerCase();
+  /** Spotify Connect id of a device by name; falls back to the name (SpotifyPlus resolves names too). */
+  async #resolveDevice(want) {
+    const key = want.toLowerCase();
+    const cached = this.deviceCache.get(key);
+    if (cached && Date.now() - cached.at < DEVICE_TTL_MS) return cached;
     let seen = [];
     try {
       const devs = await this.devices();
       seen = devs.map((d) => d.name);
-      const hit = devs.find((d) => d.name?.toLowerCase() === want) ?? devs.find((d) => d.name?.toLowerCase().includes(want));
+      const hit = devs.find((d) => d.name.toLowerCase() === key) ?? devs.find((d) => d.name.toLowerCase().includes(key));
       if (hit) {
-        this.device = { id: hit.id, name: hit.name, found: true, seen, at: Date.now() };
-        return this.device;
+        const dev = { ...hit, found: true, seen, at: Date.now() };
+        this.deviceCache.set(key, dev);
+        return dev;
       }
     } catch (err) {
       this.log.warn?.('[spotify] device list failed', err.message);
     }
-    return { id: MEDIA.spotify.device, name: MEDIA.spotify.device, found: false, seen, at: 0 };
+    return { id: want, name: want, found: false, ready: false, seen, at: 0 };
   }
 
-  /** Switches the stereo on and runs `fn` with the stereo's device id; clearer error when the stereo isn't visible in Spotify. */
-  async #onStereo(fn) {
-    await this.prepareStereo();
-    const dev = await this.#outputDevice();
+  /** Runs `fn` with the id of the output device (default: the stereo, switched on first) and explains common failures. */
+  async #onDevice(device, fn) {
+    const want = String(device || MEDIA.spotify.device).trim().slice(0, 100);
+    if (sameDevice(want)) await this.prepareStereo();
+    const dev = await this.#resolveDevice(want);
     try {
       return await fn(dev.id);
     } catch (err) {
-      this.device = null;
+      this.deviceCache.delete(want.toLowerCase());
+      const msg = String(err?.message ?? err);
+      if (NEEDS_CONNECT_LOGIN.test(msg)) {
+        throw new Error(
+          `"${dev.name}" slaapt en kan niet automatisch gewekt worden. Kies "${dev.name}" één keer in de Spotify-app, ` +
+            'vul de Spotify Connect-login in bij de opties van SpotifyPlus, of kies een ander toestel.',
+        );
+      }
       if (!dev.found) {
         const others = dev.seen.length ? ` Gevonden: ${dev.seen.join(', ')}.` : '';
-        throw new Error(`Spotify-toestel "${MEDIA.spotify.device}" niet gevonden.${others}`);
+        throw new Error(`Spotify-toestel "${want}" niet gevonden.${others}`);
       }
       throw err;
     }
@@ -201,30 +228,32 @@ export class Spotify {
   // ---- Playback ------------------------------------------------------------
 
   /**
-   * Plays on the stereo. `uri`: track/episode or a container; `contextUri`: album/playlist/show the
+   * Plays on the chosen device. `uri`: track/episode or a container; `contextUri`: album/playlist/show the
    * track belongs to; `uris`: explicit track list (artist top tracks); `liked`: the liked-songs list.
    */
-  async play({ uri, contextUri, uris, liked, shuffle } = {}) {
+  async play({ uri, contextUri, uris, liked, shuffle, device } = {}) {
     const sh = typeof shuffle === 'boolean' ? { shuffle } : {};
-    if (liked) return this.#onStereo((device_id) => this.#svc('player_media_play_track_favorites', { device_id, limit_total: 200, ...sh }));
+    const on = (fn) => this.#onDevice(device, fn);
+    if (liked) return on((device_id) => this.#svc('player_media_play_track_favorites', { device_id, limit_total: 200, ...sh }));
     if (Array.isArray(uris) && uris.length) {
       const clean = uris.slice(0, 100);
       clean.forEach(parseUri);
-      return this.#onStereo((device_id) => this.#svc('player_media_play_tracks', { uris: clean.join(','), device_id, ...sh }));
+      return on((device_id) => this.#svc('player_media_play_tracks', { uris: clean.join(','), device_id, ...sh }));
     }
     const item = parseUri(uri);
     if (contextUri) {
       const ctx = parseUri(contextUri);
       if (ctx.type === 'artist') throw new Error('Gebruik een lijst nummers voor een artiest');
-      return this.#onStereo((device_id) => this.#svc('player_media_play_context', { context_uri: contextUri, offset_uri: uri, device_id, ...sh }));
+      return on((device_id) => this.#svc('player_media_play_context', { context_uri: contextUri, offset_uri: uri, device_id, ...sh }));
     }
-    if (item.type === 'track' || item.type === 'episode') return this.#onStereo((device_id) => this.#svc('player_media_play_tracks', { uris: uri, device_id }));
-    return this.#onStereo((device_id) => this.#svc('player_media_play_context', { context_uri: uri, device_id, ...sh }));
+    if (item.type === 'track' || item.type === 'episode') return on((device_id) => this.#svc('player_media_play_tracks', { uris: uri, device_id }));
+    return on((device_id) => this.#svc('player_media_play_context', { context_uri: uri, device_id, ...sh }));
   }
 
-  /** Moves the current Spotify session to the stereo (and keeps it playing when `play`). */
-  async transfer(play = true) {
-    return this.#onStereo((device_id) => this.#svc('player_transfer_playback', { device_id, play }));
+  /** Moves the current Spotify session to the device (and keeps it playing when `play`). */
+  async transfer(play = true, device = null) {
+    // force_activate_device would always do a Spotify Connect re-login, which needs credentials many setups don't have
+    return this.#onDevice(device, (device_id) => this.#svc('player_transfer_playback', { device_id, play, force_activate_device: false }));
   }
 
   /** Called when the stereo is switched to its Spotify input: pull a session that plays elsewhere to the stereo. */
@@ -235,13 +264,22 @@ export class Spotify {
     await this.transfer(true);
   }
 
-  async control(cmd, value) {
+  /** Play: resume where it's paused, move a session from another device, or start the last context on the device. */
+  async #resume(device) {
     const s = this.state();
-    const onStereo = sameDevice(s?.attributes?.sp_device_name);
+    const target = String(device || MEDIA.spotify.device);
+    const current = s?.attributes?.sp_device_name;
+    if (current && sameTarget(current, target)) {
+      if (sameDevice(target)) await this.prepareStereo();
+      return this.#mp('media_play');
+    }
+    if (current) return this.transfer(true, device);
+    return this.#onDevice(device, (device_id) => this.#svc('player_media_resume', { device_id }));
+  }
+
+  async control(cmd, value, device = null) {
     switch (cmd) {
-      case 'play':
-        if (onStereo && s?.state === 'paused') return this.#mp('media_play');
-        return this.transfer(true);
+      case 'play': return this.#resume(device);
       case 'pause': return this.#mp('media_pause');
       case 'next': return this.#mp('media_next_track');
       case 'previous': return this.#mp('media_previous_track');
@@ -252,7 +290,7 @@ export class Spotify {
         return this.#mp('repeat_set', { repeat: value });
       }
       case 'volume': return this.#mp('volume_set', { volume_level: Math.min(1, Math.max(0, Number(value) || 0)) });
-      case 'transfer': return this.transfer(true);
+      case 'transfer': return this.transfer(true, value || device);
       default: throw new Error(`Onbekende Spotify-opdracht ${cmd}`);
     }
   }
@@ -278,7 +316,7 @@ export class Spotify {
       case 'isLiked': return this.isLiked(args.id);
       case 'devices': return this.devices();
       case 'play': return this.play(args);
-      case 'control': return this.control(args.cmd, args.value);
+      case 'control': return this.control(args.cmd, args.value, args.device);
       case 'addToQueue': return this.addToQueue(args.uri);
       case 'setLiked': return this.setLiked(args.id, !!args.liked);
       default: throw new Error(`Onbekende Spotify-actie ${op}`);

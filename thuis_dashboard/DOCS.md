@@ -74,6 +74,8 @@ Kies op de stereo de bron **Spotify** en er verschijnt een Spotify-kaart: bedien
 Alles wat je start speelt automatisch op de stereo (Spotify Connect-toestel `Eetkamer`); de stereo
 wordt indien nodig eerst aangezet en op de Spotify-ingang gezet. Speelt Spotify op het moment dat je
 de bron kiest op een ander toestel (bv. je gsm), dan wordt het naar de stereo overgezet.
+Tik bovenaan de kaart op **Speelt op …** om een ander uitvoertoestel te kiezen; die keuze wordt per
+gebruiker onthouden.
 
 Eenmalige instelling (Spotify **Premium** is nodig):
 
@@ -84,8 +86,10 @@ Eenmalige instelling (Spotify **Premium** is nodig):
 3. Instellingen → Apparaten & diensten → Integratie toevoegen → **SpotifyPlus**: vul Client ID en
    Client Secret in en meld je aan bij Spotify. Home Assistant bewaart en vernieuwt het token; het
    dashboard krijgt nooit je Spotify-wachtwoord te zien.
-4. Verschijnt de stereo niet in Spotify zolang hij niets speelt? Vul dan in de opties van
-   SpotifyPlus je Spotify Connect gebruikersnaam/wachtwoord in, zodat het toestel geactiveerd kan worden.
+4. Een "slapend" Spotify Connect-toestel (bv. de stereo nadat hij een tijd niets speelde) kan
+   SpotifyPlus alleen wekken met je Spotify Connect gebruikersnaam/wachtwoord. Vul die in bij
+   SpotifyPlus → **Configureren** (opties). Zonder die login krijg je de melding dat de stereo slaapt
+   (SpotifyPlus-fout SAM1005E); kies hem dan één keer in de Spotify-app of kies een ander toestel.
 
 De naam van het toestel en (optioneel) de SpotifyPlus-entiteit staan in `app/shared/config.js`
 (`MEDIA.spotify`). Zonder entiteit wordt de eerste SpotifyPlus-speler automatisch gebruikt.

@@ -14,6 +14,7 @@ export function defaultUserPrefs() {
     presenceWatchUntil: null,
     notifyService: null,
     spotifyEntity: null,
+    spotifyDevice: null,
     theme: { mode: 'auto', accent: 'blauw' },
   };
 }
