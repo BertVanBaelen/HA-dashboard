@@ -7,6 +7,7 @@
   import Segmented from '../components/Segmented.svelte';
   import Row from './Row.svelte';
   import CalendarColorRow from './CalendarColorRow.svelte';
+  import { spotifyAccounts, findSpotify } from '../tabs/media/spotify.js';
 
   const calendars = $derived(Object.values($states).filter((s) => s.entity_id.startsWith('calendar.')).sort((a, b) => name(a).localeCompare(name(b))));
   const tabs = $derived($prefs.tabs.map((t) => ({ ...t, meta: TABS.find((x) => x.id === t.id) })).filter((t) => t.meta));
@@ -43,6 +44,9 @@
     else setWelcomeStereo({ source: null, radio: null });
   }
   const autoNotify = $derived(PEOPLE.find((p) => p.person === $user?.person)?.notify ?? null);
+  const spAccounts = $derived(spotifyAccounts($states));
+  const spDefault = $derived(findSpotify($states, null)?.entity_id ?? null);
+  const spChosen = $derived($prefs.spotifyEntity && spAccounts.some((x) => x.id === $prefs.spotifyEntity) ? $prefs.spotifyEntity : '');
 </script>
 
 <h4 class="section-title">Thema</h4>
@@ -127,6 +131,19 @@
     </Row>
   {/if}
 </div>
+
+{#if spAccounts.length}
+  <h4 class="section-title">Spotify</h4>
+  <div class="group col">
+    <Row label="Mijn account">
+      <select class="input" value={spChosen} onchange={(e) => savePrefs({ spotifyEntity: e.currentTarget.value || null })}>
+        <option value="">Standaard{spDefault ? ` (${spAccounts.find((x) => x.id === spDefault)?.name ?? spDefault})` : ''}</option>
+        {#each spAccounts as acc (acc.id)}<option value={acc.id}>{acc.name}</option>{/each}
+      </select>
+    </Row>
+    <p class="tiny faint" style="margin:0">Je bibliotheek, afspeellijsten en Liked Songs op de Spotify-kaart komen van dit account. Een extra account voeg je toe door SpotifyPlus nog eens toe te voegen in Home Assistant.</p>
+  </div>
+{/if}
 
 <h4 class="section-title">Thuiskomst</h4>
 <div class="group col">

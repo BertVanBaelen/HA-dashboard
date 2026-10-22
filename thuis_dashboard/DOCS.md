@@ -67,6 +67,35 @@ sequence:
 mode: single
 ```
 
+## Spotify (SpotifyPlus)
+
+Kies op de stereo de bron **Spotify** en er verschijnt een Spotify-kaart: bediening, je bibliotheek
+(afspeellijsten, Liked Songs, albums, artiesten, recent, podcasts), zoeken en de wachtrij.
+Alles wat je start speelt automatisch op de stereo (Spotify Connect-toestel `Eetkamer`); de stereo
+wordt indien nodig eerst aangezet en op de Spotify-ingang gezet. Speelt Spotify op het moment dat je
+de bron kiest op een ander toestel (bv. je gsm), dan wordt het naar de stereo overgezet.
+
+Eenmalige instelling (Spotify **Premium** is nodig):
+
+1. Installeer **SpotifyPlus** via HACS en herstart Home Assistant.
+2. Maak op <https://developer.spotify.com/dashboard> een app aan met als Redirect URI
+   `https://my.home-assistant.io/redirect/oauth`. Voeg onder *User Management* elk Spotify-account
+   toe dat de app gebruikt (development mode).
+3. Instellingen → Apparaten & diensten → Integratie toevoegen → **SpotifyPlus**: vul Client ID en
+   Client Secret in en meld je aan bij Spotify. Home Assistant bewaart en vernieuwt het token; het
+   dashboard krijgt nooit je Spotify-wachtwoord te zien.
+4. Verschijnt de stereo niet in Spotify zolang hij niets speelt? Vul dan in de opties van
+   SpotifyPlus je Spotify Connect gebruikersnaam/wachtwoord in, zodat het toestel geactiveerd kan worden.
+
+De naam van het toestel en (optioneel) de SpotifyPlus-entiteit staan in `app/shared/config.js`
+(`MEDIA.spotify`). Zonder entiteit wordt de eerste SpotifyPlus-speler automatisch gebruikt.
+
+**Meerdere Spotify-accounts:** voeg SpotifyPlus nog eens toe en meld je aan met het andere account
+(dezelfde developer-app mag; voeg het account toe onder *User Management*). Elke gebruiker kiest in
+Instellingen → **Spotify** zijn eigen account, of wisselt bovenaan de Spotify-kaart. Er speelt maar één
+account tegelijk op de stereo: wie iets start, neemt de stereo over. Stel de Spotify Connect
+gebruikersnaam/wachtwoord (stap 4) in voor elk account.
+
 ## Lokaal ontwikkelen
 
 ```powershell

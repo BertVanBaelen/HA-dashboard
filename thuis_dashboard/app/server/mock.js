@@ -173,6 +173,38 @@ function fakeState(id) {
   return { entity_id: id, state, attributes: attrs, last_changed: now(), last_updated: now(), context: { id: 'mock', user_id: null } };
 }
 
+// ---- SpotifyPlus mock ------------------------------------------------------
+
+const SP_ENTITY = 'media_player.spotifyplus_bert';
+const SP_ENTITY_2 = 'media_player.spotifyplus_marjo';
+const SP_ENTITIES = [SP_ENTITY, SP_ENTITY_2];
+const spId = (p, i) => `${p}${String(i).padStart(4, '0')}MockId00000000`.slice(0, 22);
+const spImg = (seed) => `https://picsum.photos/seed/${seed}/300`;
+const SP = (() => {
+  const artists = ['Arsenal', 'Bazart', 'Stromae', 'Angèle', 'Goose', 'Balthazar'].map((name, i) => ({ type: 'artist', id: spId('ar', i), uri: `spotify:artist:${spId('ar', i)}`, name, image_url: spImg(`ar${i}`) }));
+  const albums = ['Oyebo Soul', 'Echo', 'Multitude', 'Nonante-Cinq', 'Synrise', 'Fever'].map((name, i) => ({ type: 'album', id: spId('al', i), uri: `spotify:album:${spId('al', i)}`, name, artists: [artists[i]], image_url: spImg(`al${i}`) }));
+  const titles = ['Lotuk', 'Goud', 'Santé', 'Bruxelles je t\u2019aime', 'Synrise', 'Fever', 'Alors on danse', 'Nero', 'Papaoutai', 'Tout oublier', 'Bestie', 'Changes'];
+  const tracks = titles.map((name, i) => ({ type: 'track', id: spId('tr', i), uri: `spotify:track:${spId('tr', i)}`, name, duration_ms: 150000 + i * 9000, explicit: i === 7, artists: [artists[i % artists.length]], album: albums[i % albums.length] }));
+  const playlists = ['Discover Weekly', 'Zondagochtend', 'Koken', 'Belgische hits', 'Feestje'].map((name, i) => ({ type: 'playlist', id: spId('pl', i), uri: `spotify:playlist:${spId('pl', i)}`, name, owner: { display_name: i ? 'Bert' : 'Spotify' }, image_url: spImg(`pl${i}`) }));
+  const shows = ['De Ideale Wereld', 'Nerdland'].map((name, i) => ({ type: 'show', id: spId('sh', i), uri: `spotify:show:${spId('sh', i)}`, name, publisher: 'VRT', image_url: spImg(`sh${i}`) }));
+  const episodes = [1, 2, 3].map((n, i) => ({ type: 'episode', id: spId('ep', i), uri: `spotify:episode:${spId('ep', i)}`, name: `Aflevering ${n}`, duration_ms: 3000000, release_date: '2025-01-0' + n, images: [{ url: spImg(`ep${i}`) }] }));
+  return { artists, albums, tracks, playlists, shows, episodes, liked: new Set([tracks[0].id, tracks[2].id]) };
+})();
+
+function spotifyState(entity = SP_ENTITY, user = 'Bert') {
+  const t = SP.tracks[0];
+  return {
+    entity_id: entity, state: 'paused', last_changed: now(), last_updated: now(), context: { id: 'mock', user_id: null },
+    attributes: {
+      friendly_name: `SpotifyPlus ${user}`, sp_user_id: user.toLowerCase(), sp_user_display_name: user, sp_user_product: 'premium',
+      sp_device_name: 'Pixel van Bert', sp_device_id: 'mock-phone', sp_context_uri: SP.playlists[1].uri, sp_playlist_name: SP.playlists[1].name,
+      media_content_id: t.uri, media_title: t.name, media_artist: t.artists[0].name, media_album_name: t.album.name,
+      media_duration: Math.round(t.duration_ms / 1000), media_position: 42, media_position_updated_at: now(),
+      sp_nowplaying_image_url: t.album.image_url, entity_picture: t.album.image_url, shuffle: false, repeat: 'off', volume_level: 0.4,
+    },
+  };
+}
+
 export class MockHaClient extends EventEmitter {
   constructor({ log = console } = {}) {
     super();
@@ -197,6 +229,8 @@ export class MockHaClient extends EventEmitter {
     const file = candidates.find((f) => existsSync(f));
     const ids = file ? parseEntityList(readFileSync(file, 'utf8')) : [];
     for (const id of ids) this.states.set(id, fakeState(id));
+    this.states.set(SP_ENTITY, spotifyState());
+    this.states.set(SP_ENTITY_2, spotifyState(SP_ENTITY_2, 'Marjo'));
     setTimeout(() => {
       this.connected = true;
       this.emit('states', this.states);
@@ -237,6 +271,8 @@ export class MockHaClient extends EventEmitter {
       return {};
     }
     if (domain === 'todo') return this.#todo(service, ids[0], data);
+    if (domain === 'spotifyplus') return { response: { user_profile: {}, result: this.#spotify(service, data, data.entity_id) } };
+    if (domain === 'media_player' && SP_ENTITIES.includes(ids[0])) return this.#spotifyPlayer(service, data, ids[0]), {};
     if (domain === 'script' && service !== 'turn_on') {
       if (service === 'tv_aan') { this.#set('input_boolean.tv_actief', 'on'); this.#set('remote.chromecast_hd', 'on'); this.#set('media_player.chromecast_hd', 'idle'); }
       if (service === 'tv_uit') { this.#set('input_boolean.tv_actief', 'off'); this.#set('remote.chromecast_hd', 'off'); this.#set('media_player.chromecast_hd', 'off'); }
@@ -270,6 +306,74 @@ export class MockHaClient extends EventEmitter {
       else if (service === 'install') { this.#set(id, 'off', { installed_version: s.attributes.latest_version }); }
     }
     return {};
+  }
+
+  #spotifyPlay(ent, track, extra = {}) {
+    this.#set(ent, 'playing', {
+      media_content_id: track.uri, media_title: track.name, media_artist: track.artists[0].name, media_album_name: track.album.name,
+      media_duration: Math.round(track.duration_ms / 1000), media_position: 0, media_position_updated_at: now(),
+      sp_nowplaying_image_url: track.album.image_url, entity_picture: track.album.image_url, sp_device_name: 'Eetkamer', sp_device_id: 'mock-eetkamer', ...extra,
+    });
+  }
+
+  #spotify(service, data, ent) {
+    const s = this.states.get(ent);
+    const page = (items) => ({ items, total: items.length, limit: items.length });
+    const saved = (items, key) => page(items.map((x) => ({ added_at: now(), [key]: x })));
+    const byUri = (uri) => SP.tracks.find((t) => t.uri === uri);
+    switch (service) {
+      case 'get_spotify_connect_devices':
+        return { Items: [{ Id: 'mock-eetkamer', Name: 'Eetkamer', IsActiveDevice: s?.attributes.sp_device_name === 'Eetkamer' }, { Id: 'mock-phone', Name: 'Pixel van Bert', IsActiveDevice: s?.attributes.sp_device_name !== 'Eetkamer' }] };
+      case 'get_playlist_favorites': return page(ent === SP_ENTITY ? SP.playlists : [...SP.playlists].reverse().slice(0, 3).map((p) => ({ ...p, owner: { display_name: 'Marjo' } })));
+      case 'get_album_favorites': return saved(SP.albums, 'album');
+      case 'get_artists_followed': return page(SP.artists);
+      case 'get_track_favorites': return saved(SP.tracks, 'track');
+      case 'get_player_recent_tracks': return page([...SP.tracks].reverse().map((track) => ({ played_at: now(), track })));
+      case 'get_show_favorites': return saved(SP.shows, 'show');
+      case 'get_playlist_items': return page(SP.tracks.slice(0, 8).map((track) => ({ added_at: now(), track })));
+      case 'get_album_tracks': return page(SP.tracks.slice(2, 9).map(({ album, ...t }) => t));
+      case 'get_show_episodes': return page(SP.episodes);
+      case 'get_artist_top_tracks': return SP.tracks.slice(0, 6);
+      case 'get_artist_albums': return page(SP.albums);
+      case 'search_all': {
+        const q = String(data.criteria).toLowerCase();
+        const f = (arr) => arr.filter((x) => JSON.stringify(x).toLowerCase().includes(q));
+        return { tracks: page(f(SP.tracks)), artists: page(f(SP.artists)), albums: page(f(SP.albums)), playlists: page(f(SP.playlists)) };
+      }
+      case 'get_player_queue_info': {
+        const i = Math.max(0, SP.tracks.findIndex((t) => t.uri === s?.attributes.media_content_id));
+        return { currently_playing: SP.tracks[i], queue: [...SP.tracks.slice(i + 1), ...SP.tracks.slice(0, i)] };
+      }
+      case 'check_track_favorites': return Object.fromEntries(String(data.ids).split(',').map((id) => [id, SP.liked.has(id)]));
+      case 'save_track_favorites': String(data.ids).split(',').forEach((id) => SP.liked.add(id)); return null;
+      case 'remove_track_favorites': String(data.ids).split(',').forEach((id) => SP.liked.delete(id)); return null;
+      case 'player_media_play_tracks': this.#spotifyPlay(ent, byUri(String(data.uris).split(',')[0]) ?? SP.tracks[0], { sp_context_uri: null, sp_playlist_name: null }); return null;
+      case 'player_media_play_track_favorites': this.#spotifyPlay(ent, SP.tracks[data.shuffle ? 3 : 0], { shuffle: !!data.shuffle, sp_playlist_name: 'Liked Songs' }); return null;
+      case 'player_media_play_context': {
+        const pl = SP.playlists.find((p) => p.uri === data.context_uri) ?? SP.albums.find((p) => p.uri === data.context_uri);
+        this.#spotifyPlay(ent, byUri(data.offset_uri) ?? SP.tracks[0], { sp_context_uri: data.context_uri, sp_playlist_name: pl?.name ?? null, ...(typeof data.shuffle === 'boolean' ? { shuffle: data.shuffle } : {}) });
+        return null;
+      }
+      case 'player_transfer_playback': this.#set(ent, data.play ? 'playing' : null, { sp_device_name: 'Eetkamer', sp_device_id: 'mock-eetkamer', media_position_updated_at: now() }); return null;
+      default: return null;
+    }
+  }
+
+  #spotifyPlayer(service, data, ent) {
+    const s = this.states.get(ent);
+    const i = SP.tracks.findIndex((t) => t.uri === s?.attributes.media_content_id);
+    const pos = () => {
+      const a = s.attributes;
+      return s.state === 'playing' ? a.media_position + (Date.now() - Date.parse(a.media_position_updated_at)) / 1000 : a.media_position;
+    };
+    if (service === 'media_play') this.#set(ent, 'playing', { media_position_updated_at: now() });
+    else if (service === 'media_pause') this.#set(ent, 'paused', { media_position: Math.round(pos()), media_position_updated_at: now() });
+    else if (service === 'media_next_track') this.#spotifyPlay(ent, SP.tracks[(i + 1) % SP.tracks.length]);
+    else if (service === 'media_previous_track') this.#spotifyPlay(ent, SP.tracks[(i - 1 + SP.tracks.length) % SP.tracks.length]);
+    else if (service === 'media_seek') this.#set(ent, null, { media_position: data.seek_position, media_position_updated_at: now() });
+    else if (service === 'shuffle_set') this.#set(ent, null, { shuffle: data.shuffle });
+    else if (service === 'repeat_set') this.#set(ent, null, { repeat: data.repeat });
+    else if (service === 'volume_set') this.#set(ent, null, { volume_level: data.volume_level });
   }
 
   #forecast(ids, type) {

@@ -1,19 +1,20 @@
 <script>
-  import { slide, scale } from 'svelte/transition';
-  import { mdiPlay, mdiPause, mdiSpotify, mdiAlbum, mdiRecordPlayer, mdiRadioTower, mdiTune, mdiPower, mdiSwapHorizontal, mdiAudioInputRca, mdiSleep, mdiPlaylistMusic } from '@mdi/js';
+  import { slide, fade } from 'svelte/transition';
+  import { mdiPlay, mdiPause, mdiSpotify, mdiAlbum, mdiRecordPlayer, mdiRadio, mdiRadioTower, mdiTune, mdiPower, mdiSwapHorizontal, mdiAudioInputRca, mdiSleep, mdiPlaylistMusic } from '@mdi/js';
   import { MEDIA } from '$shared/config.js';
-  import { states, household, callService, action, unavailable, isOn } from '../../lib/api.js';
+  import { states, household, prefs, callService, action, unavailable, isOn } from '../../lib/api.js';
   import { colorFor } from '../../lib/colors.js';
   import Card from '../../components/Card.svelte';
   import Icon from '../../components/Icon.svelte';
   import Tile from '../../components/Tile.svelte';
   import Chip from '../../components/Chip.svelte';
-  import NowPlaying from './NowPlaying.svelte';
   import VolumeControl from './VolumeControl.svelte';
   import RadioSheet from './RadioSheet.svelte';
+  import SpotifyCard from './SpotifyCard.svelte';
+  import { findSpotify } from './spotify.js';
 
-  const SOURCE_ICONS = { spotify: mdiSpotify, cd: mdiAlbum, line1: mdiRecordPlayer };
-  const SOURCE_COLORS = { spotify: '#1DB954', cd: '#8b5cf6', line1: '#f59e0b' };
+  const SOURCE_ICONS = { spotify: mdiSpotify, radio: mdiRadio, cd: mdiAlbum, line1: mdiRecordPlayer };
+  const SOURCE_COLORS = { spotify: '#1DB954', radio: '#ef4444', cd: '#8b5cf6', line1: '#f59e0b' };
   const RADIO_COLORS = { vrtnws: '#f5b301', stubru: '#ff6a13', mnm: '#e5007d', radio1: '#2a6fdb', radio2: '#e30613' };
 
   const stereo = $derived($states[MEDIA.stereo]);
@@ -46,6 +47,25 @@
     return playing ? lastRadio : null;
   });
   const radioName = $derived(radios.find((r) => r.mediaId === currentRadioId)?.name ?? '');
+  // Remount the card when the account changes so library, search and sheets start fresh
+  const spotifyId = $derived(findSpotify($states, $prefs?.spotifyEntity)?.entity_id ?? '');
+
+  // Radio isn't a hardware input: MusicCast plays it through its Net Radio source
+  const radioActive = $derived(!!currentRadioId || /net ?radio|tuner|radio/i.test(String(a.source ?? '')));
+  const detected = $derived(radioActive ? 'radio' : (sources.find((src) => src.current)?.key ?? null));
+  /** Tapped tile that the stereo hasn't reported yet (Radio stays picked until a station is chosen). */
+  let picked = $state(/** @type {string|null} */ (null));
+  $effect(() => {
+    detected;
+    picked = null;
+  });
+  const view = $derived(picked ?? detected);
+
+  const ORDER = ['spotify', 'radio', 'cd', 'line1'];
+  const tiles = $derived([
+    ...sources.map((src) => ({ key: src.key, label: src.label, available: src.available })),
+    { key: 'radio', label: 'Radio', available: true },
+  ].sort((x, y) => ORDER.indexOf(x.key) - ORDER.indexOf(y.key)));
 
   async function run(/** @type {string} */ key, /** @type {() => Promise<any>} */ fn) {
     busy = key;
@@ -82,24 +102,32 @@
 </script>
 
 <div class="grid">
-  <Card pad={false} glow={playing} accent={playing ? 'var(--accent)' : ''}>
-    <NowPlaying s={stereo} kind="stereo" fallbackTitle={radioName || (a.source ? String(a.source) : '')}>
-      <div class="playrow">
-        <button
-          class="pp"
-          class:playing
-          aria-label={playing ? 'Pauze' : 'Afspelen'}
-          disabled={na}
-          onclick={() => callService('media_player', 'media_play_pause', {}, MEDIA.stereo).catch(() => {})}
-        >
-          {#if playing}
-            <span in:scale={{ start: 0.4, duration: 260 }}><Icon path={mdiPause} size={36} /></span>
-          {:else}
-            <span in:scale={{ start: 0.4, duration: 260 }}><Icon path={mdiPlay} size={36} /></span>
-          {/if}
-        </button>
-      </div>
-    </NowPlaying>
+  <Card class="wide" title="Bron" iconPath={mdiPlaylistMusic} subtitle={na ? 'Niet beschikbaar' : radioName ? `Nu: ${radioName}` : a.source ? `Huidige bron: ${a.source}` : ''}>
+    {#snippet actions()}
+      <button class="pp" class:playing aria-label={playing ? 'Pauze' : 'Afspelen'} disabled={na} onclick={() => callService('media_player', 'media_play_pause', {}, MEDIA.stereo).catch(() => {})}>
+        <Icon path={playing ? mdiPause : mdiPlay} size={22} />
+      </button>
+    {/snippet}
+    <div class="sources">
+      {#each tiles as src (src.key)}
+        <Tile
+          label={src.label}
+          sub={src.available ? (detected === src.key ? 'Actief' : '') : 'Niet gevonden'}
+          iconPath={SOURCE_ICONS[/** @type {keyof typeof SOURCE_ICONS} */ (src.key)] ?? mdiAudioInputRca}
+          color={SOURCE_COLORS[/** @type {keyof typeof SOURCE_COLORS} */ (src.key)] ?? ''}
+          active={view === src.key}
+          busy={busy === `src:${src.key}`}
+          disabled={na || !src.available}
+          onclick={() => {
+            picked = src.key;
+            if (src.key !== 'radio' && detected !== src.key) selectSource(src);
+          }}
+        />
+      {/each}
+    </div>
+  </Card>
+
+  <Card class="wide" pad={false}>
     {#if sleepActive}
       <div class="sleepwarn">
         <Icon path={mdiSleep} size={18} />
@@ -121,54 +149,44 @@
     </div>
   </Card>
 
-  <Card title="Bronnen" iconPath={mdiPlaylistMusic} subtitle={na ? 'Niet beschikbaar' : a.source ? `Huidige bron: ${a.source}` : ''}>
-    <div class="grid-3 sources">
-      {#each sources as src (src.key)}
-        <Tile
-          label={src.label}
-          sub={src.available ? (src.current ? 'Actief' : '') : 'Niet gevonden'}
-          iconPath={SOURCE_ICONS[/** @type {keyof typeof SOURCE_ICONS} */ (src.key)] ?? mdiAudioInputRca}
-          color={SOURCE_COLORS[/** @type {keyof typeof SOURCE_COLORS} */ (src.key)] ?? ''}
-          active={src.current && !currentRadioId}
-          busy={busy === `src:${src.key}`}
-          disabled={na || !src.available}
-          onclick={() => selectSource(src)}
-        />
-      {/each}
-    </div>
-  </Card>
-
-  <Card title="Radio" icon="radio" subtitle={radioName ? `Nu: ${radioName}` : 'Net Radio'}>
-    {#if radios.length}
-      <div class="radios">
-        {#each radios as r, i (r.id)}
-          {@const on = currentRadioId === r.mediaId}
-          <button
-            class="radio"
-            class:on
-            class:busy={busy === `radio:${r.mediaId}`}
-            style="--rc:{RADIO_COLORS[/** @type {keyof typeof RADIO_COLORS} */ (r.id)] ?? colorFor(r.id)};--d:{i * 50}ms"
-            disabled={na}
-            onclick={() => playRadio(r)}
-          >
-            <span class="badge">
-              {#if busy === `radio:${r.mediaId}`}<span class="spinner"></span>
-              {:else if on}<span class="eq"><i></i><i></i><i></i></span>
-              {:else}{r.name.replace(/^(Radio|Studio)\s+/i, '').slice(0, 3).toUpperCase()}{/if}
-            </span>
-            <span class="rname ellipsis">{r.name}</span>
+  {#key view}
+    <div class="wide" in:fade={{ duration: 200 }}>
+      {#if view === 'spotify'}
+        {#key spotifyId}<SpotifyCard />{/key}
+      {:else if view === 'radio'}
+        <Card title="Radio" iconPath={mdiRadio} subtitle={radioName ? `Nu: ${radioName}` : 'Kies een zender'}>
+          {#if radios.length}
+            <div class="radios">
+              {#each radios as r, i (r.id)}
+                {@const on = currentRadioId === r.mediaId}
+                <button
+                  class="radio"
+                  class:on
+                  class:busy={busy === `radio:${r.mediaId}`}
+                  style="--rc:{RADIO_COLORS[/** @type {keyof typeof RADIO_COLORS} */ (r.id)] ?? colorFor(r.id)};--d:{i * 50}ms"
+                  disabled={na}
+                  onclick={() => playRadio(r)}
+                >
+                  <span class="badge">
+                    {#if busy === `radio:${r.mediaId}`}<span class="spinner"></span>
+                    {:else if on}<span class="eq"><i></i><i></i><i></i></span>
+                    {:else}{r.name.replace(/^(Radio|Studio)\s+/i, '').slice(0, 3).toUpperCase()}{/if}
+                  </span>
+                  <span class="rname ellipsis">{r.name}</span>
+                </button>
+              {/each}
+            </div>
+          {:else}
+            <p class="muted small">Nog geen radiozenders. Open “Andere radio”, blader door Net Radio van de stereo en tik op de ster om favorieten toe te voegen.</p>
+          {/if}
+          <button class="btn soft block other" disabled={na} onclick={() => (sheetOpen = true)}>
+            <Icon path={mdiRadioTower} size={20} />Andere radio
           </button>
-        {/each}
-      </div>
-    {:else}
-      <p class="muted small">Nog geen radiozenders. Open “Andere radio”, blader door Net Radio van de stereo en tik op de ster om favorieten toe te voegen.</p>
-    {/if}
-    <button class="btn soft block other" disabled={na} onclick={() => (sheetOpen = true)}>
-      <Icon path={mdiRadioTower} size={20} />Andere radio
-    </button>
-  </Card>
-
-  <Card pad={false}>
+        </Card>
+      {/if}
+    </div>
+  {/key}
+  <Card class="wide" pad={false}>
     <button class="advhead" class:open={advanced} onclick={() => (advanced = !advanced)}>
       <span class="advic"><Icon path={mdiTune} size={20} /></span>
       <span class="grow">
@@ -233,18 +251,21 @@
 <RadioSheet bind:open={sheetOpen} currentId={currentRadioId} onplay={playRadio} />
 
 <style>
-  .playrow { display: flex; justify-content: center; }
+  .grid > :global(.wide) { grid-column: 1 / -1; min-width: 0; }
   .sleepwarn { display: flex; align-items: center; gap: 10px; margin: 0 14px 10px; padding: 8px 8px 8px 12px; border-radius: 14px; background: color-mix(in srgb, var(--warning, #f59e0b) 14%, var(--surface-2)); color: var(--text); }
   .pp {
-    width: 76px; height: 76px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center; color: #fff;
-    background: var(--gradient); box-shadow: 0 14px 30px -12px var(--accent);
+    width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center; color: #fff;
+    background: var(--gradient); box-shadow: 0 8px 18px -10px var(--accent);
     transition: transform 0.25s var(--spring), box-shadow 0.3s;
   }
   .pp:active { transform: scale(0.9); }
   .pp:disabled { opacity: 0.5; }
   .pp.playing { --pulse: var(--accent); }
-  .volwrap { padding: 0 16px 16px; }
-  .sources { gap: 10px; }
+  .volwrap { padding: 16px; }
+  .sleepwarn + .volwrap { padding-top: 0; }
+  .sleepwarn { margin-top: 14px; }
+  .sources { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 520px) { .sources { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
   .radios { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
   .radio {

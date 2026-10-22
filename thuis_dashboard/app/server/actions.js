@@ -1,4 +1,5 @@
 import { ALL_OFF, LIGHTS, MEDIA, PEOPLE, ROOMS, tvIsOn, stereoIsOn } from '../shared/config.js';
+import { Spotify, resolveSpotifyEntity } from './spotify.js';
 
 const ARRIVAL_DEBOUNCE_MS = 30 * 60 * 1000;
 const PRESENCE_DEBOUNCE_MS = 2 * 60 * 1000;
@@ -11,6 +12,20 @@ export class Actions {
     this.log = log;
     this.lastArrival = new Map();
     this.lastPresence = new Map();
+    /** @type {Map<string, Spotify>} one per SpotifyPlus account (keeps its device cache) */
+    this.spotifyAccounts = new Map();
+  }
+
+  /** Spotify for a dashboard user: the account chosen in their settings, else the default one. */
+  spotifyFor(userId) {
+    const entity = resolveSpotifyEntity(this.ha, userId ? this.store.getUser(userId).spotifyEntity : null);
+    if (!entity) throw new Error('SpotifyPlus-speler niet gevonden. Is de integratie SpotifyPlus geïnstalleerd en aangemeld?');
+    let sp = this.spotifyAccounts.get(entity);
+    if (!sp) {
+      sp = new Spotify({ ha: this.ha, entity, log: this.log, prepareStereo: () => this.#stereoForSpotify() });
+      this.spotifyAccounts.set(entity, sp);
+    }
+    return sp;
   }
 
   isOn(entityId) {
@@ -139,12 +154,29 @@ export class Actions {
     };
   }
 
-  async selectStereoSource(key) {
+  async selectStereoSource(key, userId = null) {
+    await this.#selectSource(key);
+    // Spotify playing elsewhere (e.g. on a phone) moves to the stereo
+    if (key === 'spotify') {
+      Promise.resolve()
+        .then(() => this.spotifyFor(userId).claim())
+        .catch((e) => this.log.warn?.('[spotify] claim failed', e.message));
+    }
+  }
+
+  async #selectSource(key) {
     const src = MEDIA.stereoSources.find((s) => s.key === key);
     const list = this.ha.getState(MEDIA.stereo)?.attributes?.source_list ?? [];
     const match = list.find((name) => src?.match.some((m) => name.toLowerCase().replace(/\s+/g, ' ') === m || name.toLowerCase().includes(m)));
     if (!match) throw new Error(`Bron "${src?.label ?? key}" niet gevonden op de stereo`);
     await this.ha.callService('media_player', 'select_source', { source: match }, { entity_id: MEDIA.stereo });
+  }
+
+  /** Stereo on and on its Spotify input before Spotify starts playing there. */
+  async #stereoForSpotify() {
+    if (!stereoIsOn((id) => this.ha.getState(id))) await this.#script(MEDIA.scripts.stereoOn);
+    const source = String(this.ha.getState(MEDIA.stereo)?.attributes?.source ?? '');
+    if (!/spotify/i.test(source)) await this.#selectSource('spotify').catch((e) => this.log.warn?.('[spotify] source select failed', e.message));
   }
 
   async welkomThuis(userId) {
@@ -158,7 +190,7 @@ export class Actions {
         const radio = this.store.getHousehold().radios.find((r) => r.id === st.radio);
         if (radio) steps.push(['Radio', () => this.playRadio(radio.mediaId)]);
       } else if (st.source) {
-        steps.push(['Bron', () => this.selectStereoSource(st.source)]);
+        steps.push(['Bron', () => this.selectStereoSource(st.source, userId)]);
       }
     }
     if (!steps.length) throw new Error('Welkom thuis is nog niet ingesteld');

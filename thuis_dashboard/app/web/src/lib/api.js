@@ -163,6 +163,11 @@ export function action(name, args = {}, okText) {
   return withToast(request({ type: 'action', name, args }), okText);
 }
 
+/** Backend action without error toast (caller shows the error itself). */
+export function actionQuiet(name, args = {}) {
+  return request({ type: 'action', name, args });
+}
+
 export function savePrefs(patch) {
   const next = { ...get(prefs), ...patch };
   prefs.set(next);

@@ -128,6 +128,12 @@ export const MEDIA = {
     { key: 'cd', label: 'CD', match: ['cd'] },
     { key: 'line1', label: 'Platenspeler', match: ['line1', 'line 1', 'audio1', 'audio 1'] },
   ],
+  // SpotifyPlus (HACS). entity: null = first media_player with SpotifyPlus attributes.
+  // device: Spotify Connect name of the stereo (matched case-insensitively, partial match allowed).
+  spotify: {
+    entity: null,
+    device: 'Eetkamer',
+  },
   apps: [
     { key: 'youtube', label: 'YouTube', activity: 'https://www.youtube.com', color: '#FF0000', icon: 'youtube' },
     { key: 'hbo', label: 'HBO Max', activity: 'https://play.max.com', color: '#9B59F0', icon: 'movie' },

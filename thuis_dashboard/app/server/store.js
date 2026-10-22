@@ -13,6 +13,7 @@ export function defaultUserPrefs() {
     arrivalNotify: false,
     presenceWatchUntil: null,
     notifyService: null,
+    spotifyEntity: null,
     theme: { mode: 'auto', accent: 'blauw' },
   };
 }

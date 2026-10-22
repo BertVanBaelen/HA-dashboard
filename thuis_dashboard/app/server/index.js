@@ -202,9 +202,10 @@ async function runAction(client, name, args) {
     case 'applyPreset': return actions.applyPreset(args.id);
     case 'capturePreset': return actions.capturePreset();
     case 'playRadio': return actions.playRadio(args.mediaId);
-    case 'selectStereoSource': return actions.selectStereoSource(args.key);
+    case 'selectStereoSource': return actions.selectStereoSource(args.key, client.user.id);
     case 'heatRoom': return actions.heatRoom(args.room);
     case 'browseStereo': return actions.browseStereo(args.mediaId, args.mediaType);
+    case 'spotify': return actions.spotifyFor(client.user.id).run(args.op, args);
     case 'setupStartDashboard': return setupStartDashboard();
     case 'testArrival': {
       const person = actions.personForUser(client.user.id);

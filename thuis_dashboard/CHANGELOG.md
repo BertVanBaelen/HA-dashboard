@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0
+- Media: **Spotify-kaart** (via SpotifyPlus) wanneer de stereo op Spotify staat: afspelen/pauze, vorige/volgende,
+  spoelen, shuffle, herhalen, volume, Liked Songs, wachtrij, zoeken en je bibliotheek (afspeellijsten, albums,
+  artiesten, recent, podcasts). Muziek speelt automatisch op de stereo (Eetkamer).
+- Stereo: bron Spotify kiezen haalt een Spotify-sessie van een ander toestel naar de stereo.
+- Spotify per gebruiker: kies je eigen Spotify-account in Instellingen (of bovenaan de Spotify-kaart).
+- Stereo-pagina vernieuwd: bovenaan de bronkeuze (Spotify, Radio, CD, Platenspeler), daaronder het soundbar-volume
+  en daaronder de kaart van de gekozen bron (Spotify-kaart of radiozenders; niets extra bij CD/platenspeler).
+
 ## 0.4.1
 - Media: play/pauze, terugspoelen en vooruitspoelen werken weer (via de Chromecast-afstandsbediening).
 
