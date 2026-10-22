@@ -59,10 +59,7 @@
     }
   }
 
-  function tvPlayPause() {
-    if (['playing', 'paused', 'buffering'].includes(cast?.state)) callService('media_player', 'media_play_pause', {}, MEDIA.chromecast).catch(() => {});
-    else callService('remote', 'send_command', { command: MEDIA.tvKeys.playPause }, MEDIA.tvRemote).catch(() => {});
-  }
+  const tvPlayPause = () => callService('remote', 'send_command', { command: MEDIA.castKeys.playPause }, MEDIA.chromecastRemote).catch(() => {});
   const tvKey = (/** @type {string} */ command) => callService('remote', 'send_command', { command }, MEDIA.tvRemote).catch(() => {});
   const scene = (/** @type {string} */ id) => callService('scene', 'turn_on', {}, id).catch(() => {});
 </script>

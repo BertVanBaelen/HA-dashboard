@@ -59,11 +59,11 @@
   <Card pad={false} glow={playing} accent={appColor}>
     <NowPlaying s={cast} kind="tv" color={appColor || 'var(--accent)'}>
       <div class="transport">
-        <button class="tbtn" aria-label="Terugspoelen" disabled={tvNA} use:hold={{ fn: () => tv(MEDIA.tvKeys.rewind), interval: 400 }}><Icon path={mdiRewind} size={26} /></button>
-        <button class="tbtn main" aria-label="Afspelen / pauze" disabled={tvNA} use:hold={{ fn: () => tv(MEDIA.tvKeys.playPause), repeat: false }}>
+        <button class="tbtn" aria-label="Terugspoelen" disabled={castNA} use:hold={{ fn: () => cc(MEDIA.castKeys.rewind), interval: 400 }}><Icon path={mdiRewind} size={26} /></button>
+        <button class="tbtn main" aria-label="Afspelen / pauze" disabled={castNA} use:hold={{ fn: () => cc(MEDIA.castKeys.playPause), repeat: false }}>
           <Icon path={mdiPlayPause} size={34} />
         </button>
-        <button class="tbtn" aria-label="Vooruitspoelen" disabled={tvNA} use:hold={{ fn: () => tv(MEDIA.tvKeys.forward), interval: 400 }}><Icon path={mdiFastForward} size={26} /></button>
+        <button class="tbtn" aria-label="Vooruitspoelen" disabled={castNA} use:hold={{ fn: () => cc(MEDIA.castKeys.forward), interval: 400 }}><Icon path={mdiFastForward} size={26} /></button>
       </div>
     </NowPlaying>
   </Card>

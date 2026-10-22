@@ -261,6 +261,10 @@ export class MockHaClient extends EventEmitter {
       else if (service === 'select_source') this.#set(id, 'playing', { source: data.source });
       else if (service === 'play_media') this.#set(id, 'playing', { media_title: data.media_content_id });
       else if (service === 'media_play_pause') this.#set(id, s.state === 'playing' ? 'paused' : 'playing');
+      else if (service === 'send_command' && id === 'remote.chromecast_hd' && data.command === 'MEDIA_PLAY_PAUSE') {
+        const cast = this.states.get('media_player.chromecast_hd');
+        if (cast) this.#set(cast.entity_id, cast.state === 'playing' ? 'paused' : 'playing');
+      }
       else if (service === 'volume_set') this.#set(id, null, { volume_level: data.volume_level });
       else if (service === 'volume_mute') this.#set(id, null, { is_volume_muted: data.is_volume_muted });
       else if (service === 'install') { this.#set(id, 'off', { installed_version: s.attributes.latest_version }); }

@@ -100,8 +100,8 @@ export const LIGHTS = [
 export const MEDIA = {
   tvPower: 'media_player.slaapkamer_bert_tv',
   tvRemote: 'remote.55mled810_12_remote',
-  // Philips TV remote keys (remote.send_command) – work regardless of what the Chromecast reports
-  tvKeys: { playPause: 'PlayPause', rewind: 'Rewind', forward: 'FastForward' },
+  // Android TV Remote keys sent to the Chromecast (remote.send_command) – the Philips TV keys don't reach the Chromecast app
+  castKeys: { playPause: 'MEDIA_PLAY_PAUSE', rewind: 'MEDIA_REWIND', forward: 'MEDIA_FAST_FORWARD' },
   chromecast: 'media_player.chromecast_hd',
   chromecastRemote: 'remote.chromecast_hd',
   tvActive: 'input_boolean.tv_actief',

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.1
+- Media: play/pauze, terugspoelen en vooruitspoelen werken weer (via de Chromecast-afstandsbediening).
+
 ## 0.4.0
 - Nieuw tabblad **Plattegrond**: per kamer temperatuur, lampen en meer; tik op een kamer voor alle instellingen.
 - Startpagina: springt niet meer terug naar het standaard HA-dashboard na het openen van Thuis Dashboard.
