@@ -93,8 +93,8 @@ export const DOOR_SENSORS = [
 ];
 
 export const LIGHTS = [
-  { entity: 'light.bedroom_govee_vloerlamp', name: 'Govee vloerlamp', room: 'Slaapkamer', sceneSelect: null },
   { entity: 'light.uplighter_floor_lamp', name: 'Uplighter', room: 'Slaapkamer', sceneSelect: 'select.uplighter_floor_lamp_scene' },
+  { entity: 'light.led_strip_keuken', name: 'LED-strip keuken', room: 'Living', sceneSelect: null },
 ];
 
 export const MEDIA = {
@@ -242,6 +242,11 @@ export const CAR_FLAGS = [
   { key: 'location', label: 'Locatie (kaart)', default: true },
 ];
 
+/** Charging prices (€/kWh): AC below the threshold, DC fast charging above it. */
+export const CAR_CHARGE_PRICES = { acPerKwh: 0.37, dcPerKwh: 0.65, dcThresholdKw: 10 };
+/** Usable battery capacity (kWh) when sensor total_battery_capacity is unavailable. */
+export const CAR_BATTERY_KWH = 61.7;
+
 export const ALL_OFF = {
   lights: LIGHTS.map((l) => l.entity),
   chromecast: 'media_player.chromecast_hd',
@@ -249,8 +254,51 @@ export const ALL_OFF = {
   climates: ROOMS.map((r) => r.climate),
 };
 
+// Plattegrond: drawn as SVG (web/src/tabs/plattegrond/FloorSvg.svelte); `rect` = [x, y, w, h] in viewBox units.
+// `climate` refers to a ROOMS key; media items use kind 'tv' | 'stereo' | 'soundbar'.
+// `icon` keys are resolved in web/src/tabs/plattegrond/icons.js.
+export const FLOORPLAN = { viewBox: [0, 0, 300, 520] };
+export const FLOORPLAN_ROOMS = [
+  { id: 'terras', name: 'Terras', icon: 'terrace', rect: [0, 0, 300, 44] },
+  { id: 'mistique', name: 'Mistique kamer', icon: 'mistique', rect: [6, 50, 92, 126] },
+  {
+    id: 'slaapkamer', name: 'Slaapkamer', icon: 'bed', rect: [102, 50, 192, 126],
+    climate: 'slaapkamer',
+    lights: ['light.uplighter_floor_lamp'],
+    sensors: [
+      { entity: 'sensor.bedroom_sensor_kamer_temperature', label: 'Temperatuur (kamer)' },
+      { entity: 'sensor.bedroom_sensor_kamer_humidity', label: 'Vochtigheid (kamer)' },
+    ],
+    switches: [
+      { entity: 'switch.bedroom_wekker_socket_1', label: 'Wekker', icon: 'alarm' },
+      { entity: 'switch.ventilator_socket_1', label: 'Ventilator', icon: 'fan' },
+    ],
+  },
+  { id: 'hall', name: 'Hall', icon: 'hall', rect: [62, 180, 90, 88] },
+  { id: 'bergplaats', name: 'Bergplaats', icon: 'storage', rect: [156, 180, 138, 88] },
+  {
+    id: 'badkamer', name: 'Badkamer', icon: 'shower', rect: [6, 272, 86, 104],
+    climate: 'badkamer',
+    openings: ['binary_sensor.myggbett_door_window_sensor_door_2'],
+    scripts: [{ entity: 'script.badkamer_verwarmen', label: 'Badkamer verwarmen', icon: 'heat' }],
+  },
+  { id: 'keuken', name: 'Keuken', icon: 'kitchen', rect: [6, 380, 86, 134] },
+  {
+    id: 'living', name: 'Living', icon: 'sofa', rect: [96, 272, 198, 242],
+    climate: 'living',
+    openings: ['binary_sensor.myggbett_door_window_sensor_door'],
+    lights: ['light.led_strip_keuken'],
+    media: [
+      { kind: 'tv', label: 'TV / Chromecast' },
+      { kind: 'stereo', label: 'Stereo' },
+      { kind: 'soundbar', label: 'Soundbar' },
+    ],
+  },
+];
+
 export const TABS = [
   { id: 'home', label: 'Home', icon: 'home' },
+  { id: 'plattegrond', label: 'Plattegrond', icon: 'floorPlan' },
   { id: 'klimaat', label: 'Klimaat', icon: 'thermostat' },
   { id: 'verlichting', label: 'Verlichting', icon: 'lightbulb' },
   { id: 'media', label: 'Media', icon: 'television' },
@@ -278,6 +326,7 @@ export const ACCENTS = [
 export const EXCLUDED_ENTITY_PATTERNS = [
   /^media_player\.undefined_undefined_/,
   /^light\.h60b0$/,
+  /^(light|button|update|number|select)\.bedroom_govee_vloerlamp/,
   /^script\.nieuw_script$/,
   /^script\.test_tablet_notification$/,
 ];
@@ -304,6 +353,7 @@ export const ALLOWED_SERVICES = {
   update: ['install'],
   backup: ['create_automatic'],
   automation: ['turn_on', 'turn_off', 'toggle'],
+  zha: ['permit'],
 };
 
 // Raw HA websocket commands the UI may send
@@ -311,6 +361,7 @@ export const ALLOWED_WS_COMMANDS = [
   'history/history_during_period',
   'recorder/statistics_during_period',
   'todo/item/list',
+  'zha/devices',
 ];
 
 export const DEFAULT_COMFORT = { living: 21, slaapkamer: 19, badkamer: 22 };
@@ -319,29 +370,29 @@ export const DEFAULT_PRESETS = [
   {
     id: 'avond', name: 'Avond', icon: 'weatherSunset',
     lights: {
-      'light.bedroom_govee_vloerlamp': { on: true, brightness: 60, colorTemp: 2700 },
       'light.uplighter_floor_lamp': { on: true, brightness: 40, rgb: [255, 140, 60] },
+      'light.led_strip_keuken': { on: true, brightness: 30, rgb: [255, 140, 60] },
     },
   },
   {
     id: 'lezen', name: 'Lezen', icon: 'book',
     lights: {
-      'light.bedroom_govee_vloerlamp': { on: true, brightness: 100, colorTemp: 4000 },
       'light.uplighter_floor_lamp': { on: true, brightness: 70, colorTemp: 4000 },
+      'light.led_strip_keuken': { on: false },
     },
   },
   {
     id: 'nacht', name: 'Nacht', icon: 'weatherNight',
     lights: {
-      'light.bedroom_govee_vloerlamp': { on: true, brightness: 5, colorTemp: 2200 },
-      'light.uplighter_floor_lamp': { on: false },
+      'light.uplighter_floor_lamp': { on: true, brightness: 5, colorTemp: 2200 },
+      'light.led_strip_keuken': { on: false },
     },
   },
   {
     id: 'uit', name: 'Uit', icon: 'power',
     lights: {
-      'light.bedroom_govee_vloerlamp': { on: false },
       'light.uplighter_floor_lamp': { on: false },
+      'light.led_strip_keuken': { on: false },
     },
   },
 ];

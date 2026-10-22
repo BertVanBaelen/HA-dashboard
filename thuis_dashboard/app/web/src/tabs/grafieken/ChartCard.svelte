@@ -91,7 +91,7 @@
   <Card title={def.title} iconPath={def.iconPath} accent={def.accent ?? ''}>
     {#snippet actions()}
       {#if current && primary}
-        <span class="now num">{num(current, primary.digits ?? 1)}<small>{series.find((s) => s.entity === primary.entity)?.unit ?? ''}</small></span>
+        <span class="now num">{primary.map ? (Number.isFinite(Number(current.state)) ? num({ state: primary.map(Number(current.state)) }, primary.digits ?? 1) : '–') : num(current, primary.digits ?? 1)}<small>{series.find((s) => s.entity === primary.entity)?.unit ?? ''}</small></span>
       {/if}
       <button class="btn icon ghost sm" aria-label="Vernieuwen" disabled={loading || !visible} onclick={load}>
         <Icon path={mdiRefresh} size={18} class={loading ? 'spin' : ''} />

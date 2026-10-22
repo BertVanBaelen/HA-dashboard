@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0
+- Nieuw tabblad **Plattegrond**: per kamer temperatuur, lampen en meer; tik op een kamer voor alle instellingen.
+- Startpagina: springt niet meer terug naar het standaard HA-dashboard na het openen van Thuis Dashboard.
+- Personen: tijdelijke meldingen "Komen & gaan" (1–8 uur of tot morgen) wanneer iemand thuiskomt of vertrekt.
+- Systeem: Zigbee via ZHA (toestellen, LQI, laatst gezien, koppelen); Zigbee2MQTT/MQTT-onderdelen verwijderd.
+- Auto: verbruik in kWh/100km, nieuwe onderdelen "Ritten" en "Kosten" (laden < 10 kW € 0,37/kWh, > 10 kW € 0,65/kWh,
+  op basis van de HA-geschiedenis), overbodige cijfers weg, stoelverwarming zet niveau en schakelaar apart aan.
+- Agenda: afspraken maken in je eigen agenda's.
+- Home: tik op de regengrafiek voor de buienradar.
+- Klimaat: draaiknoppen vervangen door −/+ knoppen en snelkeuzes (geen per ongeluk draaien meer bij scrollen).
+- Verlichting: Govee vloerlamp verwijderd, LED-strip keuken toegevoegd.
+- Stereo: duidelijke melding (en uitzetknop) als de sleep timer aan staat.
+
 ## 0.3.3
 - Fix: het dashboardpaneel is ook zichtbaar voor niet-beheerders, zodat hun startpagina kan doorverwijzen.
 

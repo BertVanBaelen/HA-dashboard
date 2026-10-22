@@ -16,6 +16,49 @@ const MG_MOCK = {
   journey_distance: ['0', 'km'], instant_power: ['0.4', 'kW'], speed: ['0', 'km/h'], brand: ['MG'], model: ['MG4 Electric'], vin: ['LSJWH4000PN000000'],
 };
 
+/** Simulated MG4 history (rides + AC/DC charging) for the Ritten/Kosten views. */
+function mgHistory(id, start, end) {
+  const key = /^(sensor|switch)\.mg_mg4_electric_/.test(id) ? id.split('.')[1].replace('mg_mg4_electric_', '') : '';
+  if (!['mileage', 'speed', 'state_of_charge', 'power_mode', 'charging_power', 'charging', 'battery_energy', 'last_charge_energy'].includes(key)) return null;
+  const step = 300e3, cap = 61.7;
+  let km = 23000, soc = 70, lce = 20.5, sess = 0, night = false;
+  const pts = [];
+  let prev;
+  for (let t = Math.floor(start / step) * step; t <= end; t += step) {
+    const d = new Date(t);
+    const h = d.getHours() + d.getMinutes() / 60;
+    const day = Math.floor(t / 86400e3);
+    const trips = [[7.75, 0.6, 30], [17.2, 0.65, 32], ...(day % 4 === 0 ? [[12, 1.5, 120]] : [])];
+    const trip = trips.find(([s, len]) => h >= s && h < s + len);
+    let speed = 0, power = 0;
+    if (trip) {
+      speed = Math.round((trip[2] / trip[1]) * (0.7 + ((t / step) % 5) * 0.15));
+      const dk = trip[2] / (trip[1] * 12);
+      km += dk;
+      soc -= ((dk * 0.165) / cap) * 100;
+    } else if (day % 4 === 0 && h >= 13.6 && h < 14.2 && soc < 90) power = 48;
+    else if (h >= 22 || h < 6) {
+      if (!night && soc < 45) night = true;
+      if (night && soc < 80) power = 7.2;
+    } else night = false;
+    if (power) { soc = Math.min(100, soc + (power / 12 / cap) * 100); sess += power / 12; } else if (sess) { lce = sess; sess = 0; }
+    const v = { mileage: km.toFixed(1), speed: String(speed), state_of_charge: String(Math.round(soc)), power_mode: trip ? 'On' : 'Off', charging_power: power ? (power + rand(-0.3, 0.3)).toFixed(1) : '0',
+      charging: power ? 'on' : 'off', battery_energy: ((soc / 100) * cap).toFixed(1), last_charge_energy: lce.toFixed(1) }[key];
+    if (v !== prev || key === 'speed' && speed) pts.push({ s: v, lu: t / 1000 });
+    prev = v;
+  }
+  return pts;
+}
+
+/** Entity list: a JSON array or a plain list with one entity id per line (optionally "- " prefixed). */
+function parseEntityList(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return [...new Set([...text.matchAll(/^[\s\-*]*([a-z0-9_]+\.[a-z0-9_]+)\s*$/gm)].map((m) => m[1]))];
+  }
+}
+
 function fakeState(id) {
   const [domain, name] = id.split('.');
   const attrs = { friendly_name: name.replace(/_/g, ' ') };
@@ -90,7 +133,7 @@ function fakeState(id) {
     case 'todo': state = n === 'shopping_list' ? '3' : '0'; attrs.supported_features = 15; attrs.friendly_name = n === 'shopping_list' ? 'Boodschappen' : 'Poetsdag'; break;
     case 'calendar': state = 'off'; attrs.friendly_name = n.replace(/_/g, ' '); attrs.supported_features = /calendar$|vakantie|other/.test(n) ? 7 : 0; break;
     case 'update': {
-      const on = /core|zigbee2mqtt|bubble|hacs/.test(n);
+      const on = /core|bubble|hacs/.test(n);
       state = on ? 'on' : 'off';
       Object.assign(attrs, { installed_version: '1.2.0', latest_version: on ? '1.3.0' : '1.2.0', title: name.replace(/_update$/, '').replace(/_/g, ' '), release_url: 'https://www.home-assistant.io', in_progress: false, supported_features: 29, update_percentage: null });
       break;
@@ -119,7 +162,6 @@ function fakeState(id) {
       else if (n.includes('geofencing')) state = 'Home';
       else if (n.includes('solar')) { state = '42'; attrs.unit_of_measurement = '%'; }
       else if (n.includes('backup_manager_state')) state = 'idle';
-      else if (n.includes('zigbee2mqtt_bridge_version')) state = '2.1.3';
       else if (n.includes('reachability')) state = 'online';
       else if (n.includes('charging_status')) state = 'charging';
       else if (n.startsWith('mg_') && MG_MOCK[n.slice(16)]) [state, attrs.unit_of_measurement] = MG_MOCK[n.slice(16)];
@@ -153,7 +195,7 @@ export class MockHaClient extends EventEmitter {
   start() {
     const candidates = [process.env.MOCK_ENTITIES, join(here, '..', '..', '..', 'Entity list.txt')].filter(Boolean);
     const file = candidates.find((f) => existsSync(f));
-    const ids = file ? JSON.parse(readFileSync(file, 'utf8')) : [];
+    const ids = file ? parseEntityList(readFileSync(file, 'utf8')) : [];
     for (const id of ids) this.states.set(id, fakeState(id));
     setTimeout(() => {
       this.connected = true;
@@ -219,6 +261,8 @@ export class MockHaClient extends EventEmitter {
       else if (service === 'select_source') this.#set(id, 'playing', { source: data.source });
       else if (service === 'play_media') this.#set(id, 'playing', { media_title: data.media_content_id });
       else if (service === 'media_play_pause') this.#set(id, s.state === 'playing' ? 'paused' : 'playing');
+      else if (service === 'volume_set') this.#set(id, null, { volume_level: data.volume_level });
+      else if (service === 'volume_mute') this.#set(id, null, { is_volume_muted: data.is_volume_muted });
       else if (service === 'install') { this.#set(id, 'off', { installed_version: s.attributes.latest_version }); }
     }
     return {};
@@ -295,6 +339,21 @@ export class MockHaClient extends EventEmitter {
     return {};
   }
 
+  #zhaDevices() {
+    const ago = (min) => new Date(Date.now() - min * 60e3).toISOString();
+    const dev = (ieee, nwk, name, manufacturer, model, device_type, power_source, available, lqi, lastMin, entities = []) => ({
+      ieee, nwk, name: `${manufacturer} ${model}`, user_given_name: name, manufacturer, model, quirk_class: 'zigpy.device.Device', available, lqi, rssi: lqi ? Math.round(lqi / 4 - 90) : null,
+      last_seen: ago(lastMin), power_source, device_type, area_id: null, entities: entities.map((entity_id) => ({ entity_id })),
+    });
+    return [
+      dev('00:12:4b:00:2a:3b:4c:5d', 0, null, 'ITEAD', 'Sonoff Zigbee 3.0 USB Dongle Plus V2', 'Coordinator', 'Mains', true, 255, 0),
+      dev('84:2e:14:ff:fe:11:22:33', 0x1a2b, 'Living raam', 'IKEA of Sweden', 'MYGGBETT door/window sensor', 'EndDevice', 'Battery or Unknown', true, 156, 4, ['binary_sensor.myggbett_door_window_sensor_door', 'sensor.myggbett_door_window_sensor_battery']),
+      dev('84:2e:14:ff:fe:44:55:66', 0x3c4d, 'Badkamerdeur', 'IKEA of Sweden', 'MYGGBETT door/window sensor', 'EndDevice', 'Battery or Unknown', true, 98, 22, ['binary_sensor.myggbett_door_window_sensor_door_2', 'sensor.myggbett_door_window_sensor_battery_2']),
+      dev('a4:c1:38:aa:bb:cc:dd:ee', 0x5e6f, 'Stekker bureau', 'IKEA of Sweden', 'TRETAKT Smart plug', 'Router', 'Mains', true, 212, 1),
+      dev('a4:c1:38:11:22:33:44:55', 0x7081, 'Temperatuur zolder', 'SONOFF', 'SNZB-02D', 'EndDevice', 'Battery or Unknown', false, 34, 60 * 26),
+    ];
+  }
+
   async send(msg) {
     if (msg.type === 'media_player/browse_media') {
       const item = (title, id, canPlay, canExpand) => ({ title, media_content_id: id, media_content_type: canPlay ? 'track' : 'directory', can_play: canPlay, can_expand: canExpand });
@@ -308,11 +367,14 @@ export class MockHaClient extends EventEmitter {
     if (msg.type === 'lovelace/resources' || msg.type === 'lovelace/dashboards/list') return [];
     if (msg.type.startsWith('lovelace/')) return null;
     if (msg.type === 'todo/item/list') return { items: this.todos[msg.entity_id] ?? [] };
+    if (msg.type === 'zha/devices') return this.#zhaDevices();
     if (msg.type === 'history/history_during_period') {
       const start = new Date(msg.start_time).getTime();
       const end = msg.end_time ? new Date(msg.end_time).getTime() : Date.now();
       const out = {};
       for (const id of msg.entity_ids) {
+        const car = mgHistory(id, start, end);
+        if (car) { out[id] = car; continue; }
         const pts = [];
         const step = Math.max(300e3, (end - start) / 200);
         let v = rand(18, 21);

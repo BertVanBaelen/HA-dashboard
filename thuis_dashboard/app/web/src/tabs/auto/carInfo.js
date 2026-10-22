@@ -1,6 +1,6 @@
 import {
   mdiBatteryHigh, mdiBatteryArrowUp, mdiBatteryCharging, mdiCarBattery, mdiEvStation, mdiEvPlugType2, mdiLightningBolt,
-  mdiCurrentDc, mdiCurrentAc, mdiSineWave, mdiSpeedometer, mdiCounter, mdiMapMarkerPath, mdiLeaf, mdiFlash, mdiPower,
+  mdiCurrentDc, mdiCurrentAc, mdiSineWave, mdiSpeedometer, mdiCounter, mdiMapMarkerPath, mdiLeaf, mdiPower,
   mdiKey, mdiClockOutline, mdiFan, mdiThermometer, mdiCarDefrostFront, mdiCarDefrostRear, mdiCarSeatHeater, mdiSteering,
   mdiAirConditioner, mdiLock, mdiCarDoor, mdiCarBack, mdiWindowClosedVariant, mdiCarTireAlert, mdiCarLightDimmed,
   mdiCarLightHigh, mdiCarParkingLights, mdiCarConnected, mdiUpdate, mdiMapMarker, mdiPalmTree, mdiAlertCircleOutline,
@@ -10,12 +10,13 @@ import {
 } from '@mdi/js';
 import { CAR_ENTITIES } from '$shared/config.js';
 import { relTime, fmtDateTime, fmtDuration } from '../../lib/format.js';
+import { toKwh100 } from './carHistory.js';
 
 const P = CAR_ENTITIES.soc.replace(/^sensor\./, '').replace(/_state_of_charge$/, '');
 const id = (/** @type {string} */ domain, /** @type {string} */ suffix) => `${domain}.${P}_${suffix}`;
 
 /**
- * @typedef {{ id: string, label: string, icon: string, digits?: number, kind?: 'dur'|'time'|'ts', on?: string, off?: string }} InfoItem
+ * @typedef {{ id: string, label: string, icon: string, digits?: number, kind?: 'dur'|'time'|'ts'|'eff', on?: string, off?: string }} InfoItem
  * @typedef {{ key: string, title: string, icon: string, accent?: string, items: InfoItem[] }} InfoGroup
  */
 
@@ -31,7 +32,6 @@ export const GROUPS = [
       { id: CAR_ENTITIES.range, label: 'Bereik', icon: mdiMapMarkerDistance, digits: 0 },
       { id: CAR_ENTITIES.targetSoc, label: 'Doel-laadniveau', icon: mdiBatteryArrowUp, digits: 0 },
       { id: id('sensor', 'target_soc'), label: 'Doel-laadniveau (auto)', icon: mdiBatteryArrowUp, digits: 0 },
-      { id: id('sensor', 'battery_energy'), label: 'Energie in batterij', icon: mdiBatteryCharging, digits: 1 },
       { id: id('sensor', 'total_battery_capacity'), label: 'Batterijcapaciteit', icon: mdiCarBattery, digits: 1 },
       { id: id('sensor', 'charging_status'), label: 'Laadstatus', icon: mdiEvStation },
       { id: CAR_ENTITIES.charging, label: 'Laden', icon: mdiEvStation, on: 'Bezig', off: 'Gestopt' },
@@ -47,7 +47,6 @@ export const GROUPS = [
       { id: CAR_ENTITIES.estimatedRangeAfterCharging, label: 'Bereik na laden', icon: mdiMapMarkerDistance, digits: 0 },
       { id: id('sensor', 'added_electric_range'), label: 'Bijgeladen bereik', icon: mdiPlusCircleOutline, digits: 0 },
       { id: id('sensor', 'last_charge_duration'), label: 'Vorige laadbeurt – duur', icon: mdiTimerOutline, kind: 'dur' },
-      { id: id('sensor', 'last_charge_energy'), label: 'Vorige laadbeurt – energie', icon: mdiLightningBolt, digits: 1 },
       { id: id('sensor', 'last_charge_range_added'), label: 'Vorige laadbeurt – bereik', icon: mdiPlusCircleOutline, digits: 0 },
       { id: id('sensor', 'charging_data_freshness'), label: 'Laaddata versheid', icon: mdiDatabaseClockOutline },
       { id: id('sensor', 'charging_data_last_updated'), label: 'Laaddata bijgewerkt', icon: mdiDatabaseClockOutline, kind: 'ts' },
@@ -59,7 +58,6 @@ export const GROUPS = [
       { id: id('sensor', 'battery_heating_status'), label: 'Status batterijverwarming', icon: mdiBatteryHeart },
       { id: CAR_ENTITIES.batteryHeatingSchedule, label: 'Batterij voorverwarmen', icon: mdiCalendarClock, ...ONOFF },
       { id: CAR_ENTITIES.batteryHeatingTime, label: 'Voorverwarmen om', icon: mdiClockOutline, kind: 'time' },
-      { id: id('sensor', 'ancillary_battery_voltage'), label: '12V-batterij', icon: mdiCarBattery, digits: 2 },
     ],
   },
   {
@@ -69,12 +67,11 @@ export const GROUPS = [
       { id: CAR_ENTITIES.mileage, label: 'Kilometerstand', icon: mdiCounter, digits: 0 },
       { id: id('sensor', 'journey_distance'), label: 'Huidige rit', icon: mdiMapMarkerPath, digits: 1 },
       { id: id('sensor', 'last_trip_distance'), label: 'Vorige rit', icon: mdiMapMarkerPath, digits: 1 },
-      { id: id('sensor', 'last_trip_efficiency'), label: 'Verbruik vorige rit', icon: mdiLeaf, digits: 1 },
+      { id: id('sensor', 'last_trip_efficiency'), label: 'Verbruik vorige rit', icon: mdiLeaf, digits: 1, kind: 'eff' },
       { id: id('sensor', 'mileage_since_last_charge'), label: 'Km sinds laden', icon: mdiRoadVariant, digits: 0 },
       { id: id('sensor', 'power_usage_since_last_charge'), label: 'Verbruikt sinds laden', icon: mdiLightningBolt, digits: 1 },
-      { id: id('sensor', 'efficiency_since_last_charge'), label: 'Verbruik sinds laden', icon: mdiLeaf, digits: 1 },
-      { id: id('sensor', 'efficiency_since_charge_soc'), label: 'Verbruik sinds laden (SoC)', icon: mdiLeaf, digits: 1 },
-      { id: CAR_ENTITIES.instantPower, label: 'Momentaan vermogen', icon: mdiFlash, digits: 1 },
+      { id: id('sensor', 'efficiency_since_last_charge'), label: 'Verbruik sinds laden', icon: mdiLeaf, digits: 1, kind: 'eff' },
+      { id: id('sensor', 'efficiency_since_charge_soc'), label: 'Verbruik sinds laden (SoC)', icon: mdiLeaf, digits: 1, kind: 'eff' },
       { id: id('sensor', 'power_mode'), label: 'Stroommodus', icon: mdiPower },
       { id: id('binary_sensor', 'engine_status'), label: 'Motor', icon: mdiCarCog, ...ONOFF },
       { id: id('sensor', 'last_powered_on'), label: 'Laatst aangezet', icon: mdiPower, kind: 'ts' },
@@ -155,6 +152,14 @@ export const GROUPS = [
 
 export const ICON_FALLBACK = mdiCarWrench;
 
+/** Entities intentionally not shown as stats (still used internally, e.g. for cost calculations). */
+export const HIDDEN = new Set([
+  id('sensor', 'battery_energy'),
+  id('sensor', 'last_charge_energy'),
+  id('sensor', 'ancillary_battery_voltage'),
+  CAR_ENTITIES.instantPower,
+]);
+
 /** @type {Record<string,string>} */
 const WORDS = {
   online: 'Online', offline: 'Offline', charging: 'Laden', not_charging: 'Niet aan het laden', 'not charging': 'Niet aan het laden',
@@ -228,6 +233,10 @@ export function formatValue(st, item) {
   const n = Number(v);
   const unit = a.unit_of_measurement ?? '';
   if (v.trim() !== '' && Number.isFinite(n) && !/vin|model_year/.test(st.entity_id)) {
+    if (item.kind === 'eff') {
+      const c = toKwh100(n, unit);
+      return c != null ? { text: fmt(c, 1), unit: 'kWh/100km', na: false } : { text: '—', na: true };
+    }
     if (item.kind === 'dur' || a.device_class === 'duration') {
       const min = unit === 's' ? n / 60 : unit === 'h' ? n * 60 : unit === 'd' ? n * 1440 : n;
       return { text: fmtDuration(min), na: false };

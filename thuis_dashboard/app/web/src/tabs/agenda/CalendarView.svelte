@@ -81,7 +81,7 @@
   const anyCalendars = $derived(people.some((p) => p.calendars.length));
   const calKey = $derived(mine.join(','));
   const writable = $derived(
-    ($household?.sharedCalendars ?? []).filter((id) => {
+    [...new Set([...($prefs?.calendars ?? []), ...($household?.sharedCalendars ?? [])])].filter((id) => {
       const f = $states[id]?.attributes?.supported_features;
       return $states[id] && (f == null || (f & 1) === 1);
     }),

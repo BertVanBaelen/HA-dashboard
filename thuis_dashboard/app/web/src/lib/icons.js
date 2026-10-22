@@ -4,6 +4,9 @@ import * as m from '@mdi/js';
 export const icons = {
   home: m.mdiHomeVariant,
   thermostat: m.mdiThermostat,
+  floorPlan: m.mdiFloorPlan,
+  zigbee: m.mdiZigbee,
+  radar: m.mdiRadar,
   lightbulb: m.mdiLightbulbGroup,
   television: m.mdiTelevisionClassic,
   car: m.mdiCarElectric,

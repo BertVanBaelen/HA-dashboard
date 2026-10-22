@@ -1,5 +1,5 @@
 import { mdiHomeAssistant, mdiPuzzle, mdiStorefrontOutline, mdiCardsOutline, mdiChip, mdiPackageVariant, mdiCellphone, mdiTablet, mdiRadiator, mdiDoorOpen, mdiWindowOpenVariant, mdiZigbee, mdiBattery } from '@mdi/js';
-import { PEOPLE, DOOR_SENSORS } from '$shared/config.js';
+import { PEOPLE, DOOR_SENSORS, CAR_ENTITIES } from '$shared/config.js';
 
 export const FEATURE_BACKUP = 8;
 
@@ -11,18 +11,10 @@ export const BACKUP = {
   event: 'event.backup_automatic_backup',
 };
 
-export const ZIGBEE = {
-  connection: 'binary_sensor.zigbee2mqtt_bridge_connection_state',
-  version: 'sensor.zigbee2mqtt_bridge_version',
-  permitJoin: 'switch.zigbee2mqtt_bridge_permit_join',
-  restart: 'button.zigbee2mqtt_bridge_restart',
-};
-
-export const PERMIT_JOIN_SECONDS = 240;
 export const BACKUP_MAX_AGE_MS = 3 * 86400e3;
 
 const SYSTEM = ['home_assistant_core', 'home_assistant_operating_system', 'home_assistant_supervisor'];
-const APPS = ['file_editor', 'matter_server', 'cloudflared', 'immich', 'postgres_17', 'studio_code_server', 'travelsteps', 'openthread_border_router', 'sonoff_dongle_flasher', 'zigbee2mqtt', 'mosquitto_broker', 'alarm_actions', 'alarm_actions_app'];
+const APPS = ['file_editor', 'matter_server', 'cloudflared', 'immich', 'postgres_17', 'studio_code_server', 'travelsteps', 'openthread_border_router', 'sonoff_dongle_flasher', 'alarm_actions', 'alarm_actions_app'];
 const HACS = ['hacs', 'mg_saic', 'govee', 'govee_cloud_integration', 'local_tuya', 'google_home', 'advanced_history'];
 const CARDS = ['tabbed_card', 'bubble_card', 'card_mod', 'statistics_graph_chart_card', 'universal_remote_card', 'config_template_card', 'custom_features_for_home_assistant_cards'];
 
@@ -84,32 +76,30 @@ export function installOrder(s) {
 
 const stripSuffix = (s, re) => String(s?.attributes?.friendly_name ?? '').replace(re, '').trim();
 
-export function batteryInfo(id, s, sensorLabels = {}) {
+/** @param {Set<string>} [zigbeeIds] entity ids belonging to ZHA devices */
+export function batteryInfo(id, s, sensorLabels = {}, zigbeeIds) {
   const person = PEOPLE.find((p) => p.battery === id);
   if (person) return { label: `Telefoon ${person.name}`, icon: mdiCellphone, chargingEntity: person.batteryState };
   if (id.startsWith('sensor.tablet_')) return { label: 'Tablet', icon: mdiTablet, chargingEntity: 'sensor.tablet_battery_state' };
   const door = DOOR_SENSORS.find((d) => d.battery === id);
   if (door) return { label: sensorLabels?.[door.entity] || door.defaultLabel, icon: door.kind === 'window' ? mdiWindowOpenVariant : mdiDoorOpen };
   const re = /\s*(batterij|battery)( level)?$/i;
-  if (id.startsWith('binary_sensor.')) {
+  if (id.startsWith('binary_sensor.') && /_battery(_\d+)?$/.test(id) && !zigbeeIds?.has(id)) {
     const serial = id.replace(/^binary_sensor\./, '').replace(/_battery(_\d+)?$/, '').toUpperCase();
     const fn = stripSuffix(s, re);
     return { label: `Tado ${fn && fn.toUpperCase() !== serial ? fn : serial}`, icon: mdiRadiator };
   }
-  const zb = id.match(/^sensor\.(0x[0-9a-f]+)_battery/);
-  if (zb) {
-    const fn = stripSuffix(s, re);
-    return { label: fn && fn !== zb[1] ? fn : `Zigbee ${zb[1].slice(0, 8)}…`, icon: mdiZigbee };
-  }
-  return { label: stripSuffix(s, re) || id, icon: mdiBattery };
+  return { label: stripSuffix(s, re) || id, icon: zigbeeIds?.has(id) ? mdiZigbee : mdiBattery };
 }
 
-export const isBatteryEntity = (id) => /^sensor\..+_battery(_level)?(_\d+)?$/.test(id) || /^binary_sensor\..+_battery(_\d+)?$/.test(id);
+export const isBatteryEntity = (id, s) =>
+  /^sensor\..+_battery(_level)?(_\d+)?$/.test(id) ||
+  /^binary_sensor\..+_battery(_\d+)?$/.test(id) ||
+  (s?.attributes?.device_class === 'battery' && id !== CAR_ENTITIES.soc && (id.startsWith('binary_sensor.') || (id.startsWith('sensor.') && s.attributes.unit_of_measurement === '%')));
 
 export const levelColor = (pct) => (pct < 20 ? 'var(--danger)' : pct < 40 ? 'var(--warn)' : 'var(--ok)');
 
 export function connectivityLabel(id, s) {
-  if (id === ZIGBEE.connection) return 'Zigbee2MQTT bridge';
   if (id.includes('mg_mg4_electric')) return 'MG4';
   if (id.includes('uplighter')) return 'Uplighter';
   const fn = stripSuffix(s, /\s*(connection state|verbindingsstatus|connectivity|connectiviteit|verbinding)$/i);
@@ -137,12 +127,12 @@ export function collectUpdates(st) {
 }
 
 /** @param {Record<string, any>} st */
-export function collectBatteries(st, sensorLabels = {}) {
+export function collectBatteries(st, sensorLabels = {}, zigbeeIds = undefined) {
   return Object.values(st)
-    .filter((s) => isBatteryEntity(s.entity_id))
+    .filter((s) => isBatteryEntity(s.entity_id, s))
     .map((s) => {
       const id = s.entity_id;
-      const info = batteryInfo(id, s, sensorLabels);
+      const info = batteryInfo(id, s, sensorLabels, zigbeeIds);
       const binary = id.startsWith('binary_sensor.');
       const n = Number(s.state);
       const na = isUnavail(s) || (!binary && !Number.isFinite(n));

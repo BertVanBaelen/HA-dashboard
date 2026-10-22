@@ -6,7 +6,7 @@
   import { states, household, name } from '../lib/api.js';
   import Segmented from '../components/Segmented.svelte';
   import ChartCard from './grafieken/ChartCard.svelte';
-  import { klimaatCharts, autoCharts, batterijCharts } from './grafieken/charts.js';
+  import { klimaatCharts, autoCharts, batterijCharts, extraBatterySensors } from './grafieken/charts.js';
 
   const VIEWS = [
     { value: 'klimaat', label: 'Klimaat', iconPath: mdiThermometer },
@@ -25,9 +25,11 @@
   const labelKey = $derived(JSON.stringify(DOOR_SENSORS.map((d) => $household?.sensorLabels?.[d.entity] ?? d.defaultLabel)));
   const klimaat = klimaatCharts();
   const auto = autoCharts();
+  const extraKey = $derived(JSON.stringify(extraBatterySensors($states)));
   const batterijen = $derived.by(() => {
     labelKey;
-    return untrack(() => batterijCharts($household?.sensorLabels ?? {}, (id) => ($states[id] ? name($states[id]) : undefined)));
+    const extra = JSON.parse(extraKey);
+    return untrack(() => batterijCharts($household?.sensorLabels ?? {}, (id) => ($states[id] ? name($states[id]) : undefined), extra));
   });
 
   const charts = $derived(view === 'klimaat' ? klimaat : view === 'auto' ? auto : batterijen);

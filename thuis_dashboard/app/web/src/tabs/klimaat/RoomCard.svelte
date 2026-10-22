@@ -9,7 +9,7 @@
   import Icon from '../../components/Icon.svelte';
   import Badge from '../../components/Badge.svelte';
   import Segmented from '../../components/Segmented.svelte';
-  import Knob from './Knob.svelte';
+  import TempControl from './TempControl.svelte';
 
   /** @type {{ room: typeof import('$shared/config.js').ROOMS[number] }} */
   let { room } = $props();
@@ -160,21 +160,22 @@
       </div>
     {/if}
 
-    <div class="knob-area">
-      <Knob
+    <div class="temp-area">
+      <TempControl
         value={off ? comfort : (target ?? comfort)}
         min={minT}
         max={maxT}
         {step}
         {current}
         humidity={humidityVal}
+        {comfort}
         {off}
         {heating}
         disabled={na}
         label="{room.name} doeltemperatuur"
         onchange={setTemp}
       />
-      <div class="hint tiny muted">{off ? 'Draai om de verwarming aan te zetten' : 'Draai aan de knop om bij te stellen'}</div>
+      {#if off}<div class="hint tiny muted">Tik op + of een temperatuur om de verwarming aan te zetten</div>{/if}
     </div>
 
     <Segmented options={modeOptions} value={shownMode} onchange={setMode} disabled={na} />
@@ -231,7 +232,7 @@
   }
   .wiggle { display: inline-block; }
 
-  .knob-area { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 4px; }
+  .temp-area { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 4px; }
   .hint { text-align: center; }
   .label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 

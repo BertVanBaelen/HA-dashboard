@@ -10,6 +10,7 @@
   import EmptyState from '../components/EmptyState.svelte';
   import PersonMap from './personen/PersonMap.svelte';
   import PersonCard from './personen/PersonCard.svelte';
+  import PresenceWatch from './personen/PresenceWatch.svelte';
   import { coords, haversine, isAbsoluteUrl } from './personen/geo.js';
 
   let now = $state(new Date());
@@ -167,6 +168,8 @@
         </div>
       {/each}
     </div>
+
+    <PresenceWatch />
   {/if}
 </div>
 

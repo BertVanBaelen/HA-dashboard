@@ -11,6 +11,7 @@ export function defaultUserPrefs() {
     calendars: [],
     welcome: { preset: null, stereo: { enabled: false, source: null, radio: null } },
     arrivalNotify: false,
+    presenceWatchUntil: null,
     notifyService: null,
     theme: { mode: 'auto', accent: 'blauw' },
   };

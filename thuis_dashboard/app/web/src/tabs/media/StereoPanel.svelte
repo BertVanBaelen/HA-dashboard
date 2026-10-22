@@ -77,6 +77,8 @@
   const sleepOptions = $derived(/** @type {string[]} */ (sleep?.attributes?.options ?? []));
   const sleepLabel = (/** @type {string} */ o) => (/^(off|uit|0)$/i.test(o) ? 'Uit' : /^\d+$/.test(o) ? `${o} min` : o);
   const has = (/** @type {string} */ id) => !!$states[id];
+  const offOption = $derived(sleepOptions.find((o) => /^(off|uit|0)$/i.test(o)));
+  const sleepActive = $derived(!!sleep && !unavailable(sleep) && !/^(off|uit|0)$/i.test(sleep.state));
 </script>
 
 <div class="grid">
@@ -98,6 +100,15 @@
         </button>
       </div>
     </NowPlaying>
+    {#if sleepActive}
+      <div class="sleepwarn">
+        <Icon path={mdiSleep} size={18} />
+        <span class="grow small">Sleep timer staat aan: <b>{sleepLabel(sleep.state)}</b> – de stereo schakelt dan vanzelf uit</span>
+        {#if offOption}
+          <button class="btn soft" onclick={() => callService('select', 'select_option', { option: offOption }, MEDIA.stereoSleepTimer, 'Sleep timer uit').catch(() => {})}>Uitzetten</button>
+        {/if}
+      </div>
+    {/if}
     <div class="volwrap">
       <VolumeControl
         label="Soundbar (IR)"
@@ -223,6 +234,7 @@
 
 <style>
   .playrow { display: flex; justify-content: center; }
+  .sleepwarn { display: flex; align-items: center; gap: 10px; margin: 0 14px 10px; padding: 8px 8px 8px 12px; border-radius: 14px; background: color-mix(in srgb, var(--warning, #f59e0b) 14%, var(--surface-2)); color: var(--text); }
   .pp {
     width: 76px; height: 76px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center; color: #fff;
     background: var(--gradient); box-shadow: 0 14px 30px -12px var(--accent);

@@ -1,5 +1,5 @@
 <script>
-  import { mdiChartLine, mdiFormatListBulleted, mdiMagnify, mdiClose, mdiCarWrench, mdiRoadVariant, mdiCounter, mdiLeaf, mdiCarBattery, mdiBatteryHigh, mdiBatteryCharging } from '@mdi/js';
+  import { mdiChartLine, mdiFormatListBulleted, mdiMagnify, mdiClose, mdiCarWrench, mdiRoadVariant, mdiCounter, mdiLeaf, mdiBatteryHigh } from '@mdi/js';
   import { CAR_ENTITIES } from '$shared/config.js';
   import { states, name } from '../../lib/api.js';
   import { relTime } from '../../lib/format.js';
@@ -7,7 +7,8 @@
   import Icon from '../../components/Icon.svelte';
   import ChartCard from '../grafieken/ChartCard.svelte';
   import { autoCharts } from '../grafieken/charts.js';
-  import { GROUPS, ICON_FALLBACK, formatValue } from './carInfo.js';
+  import { GROUPS, ICON_FALLBACK, HIDDEN, formatValue } from './carInfo.js';
+  import { stateKwh100 } from './carHistory.js';
 
   const charts = autoCharts();
   const P = CAR_ENTITIES.soc.replace(/^sensor\./, '').replace(/_state_of_charge$/, '');
@@ -29,14 +30,13 @@
     { label: 'Bereik', icon: mdiRoadVariant, v: range, d: 0, unit: 'km' },
     { label: 'Bereik bij 100%', icon: mdiBatteryHigh, v: fullRange, d: 0, unit: 'km' },
     { label: 'Kilometerstand', icon: mdiCounter, v: val(CAR_ENTITIES.mileage), d: 0, unit: 'km' },
-    { label: 'Verbruik sinds laden', icon: mdiLeaf, v: val(effId), d: 1, unit: $states[effId]?.attributes?.unit_of_measurement ?? '' },
-    { label: 'Energie in batterij', icon: mdiBatteryCharging, v: val(`sensor.${P}_battery_energy`), d: 1, unit: 'kWh' },
-    { label: '12V-batterij', icon: mdiCarBattery, v: val(`sensor.${P}_ancillary_battery_voltage`), d: 1, unit: 'V' },
+    { label: 'Verbruik sinds laden', icon: mdiLeaf, v: stateKwh100($states[effId]), d: 1, unit: 'kWh/100km' },
+    { label: 'Verbruik vorige rit', icon: mdiLeaf, v: stateKwh100($states[`sensor.${P}_last_trip_efficiency`]), d: 1, unit: 'kWh/100km' },
   ]);
 
   const extra = $derived(
     Object.keys($states)
-      .filter((id) => id.split('.')[1]?.startsWith(`${P}_`) && !known.has(id) && !SKIP.has(id.split('.')[0]))
+      .filter((id) => id.split('.')[1]?.startsWith(`${P}_`) && !known.has(id) && !HIDDEN.has(id) && !SKIP.has(id.split('.')[0]))
       .sort()
       .map((id) => ({ id, label: name($states[id]).replace(/^MG\s*MG4\s*Electric\s*/i, '') || id, icon: ICON_FALLBACK })),
   );

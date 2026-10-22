@@ -108,7 +108,7 @@ async function statistics(ids, start, end, period) {
 const uniq = (a) => [...new Set(a)];
 
 /**
- * @typedef {{entity:string, label:string, color:string, unit?:string, axis?:string, type?:string, stat?:string, attr?:string, dash?:boolean, digits?:number, size?:number}} SeriesDef
+ * @typedef {{entity:string, label:string, color:string, unit?:string, axis?:string, type?:string, stat?:string, attr?:string, dash?:boolean, digits?:number, size?:number, map?:(v:number)=>number|null}} SeriesDef
  * @typedef {{ id: string, title: string, iconPath?: string, accent?: string, ranges?: string[], defaultRange: string,
  *   series: SeriesDef[], axes?: Record<string, {unit?: string, range?: number[], zero?: boolean, digits?: number}>, stacked?: boolean,
  *   period?: (r: string) => string|null, height?: number }} ChartDef
@@ -148,6 +148,11 @@ export async function loadChart(def, range) {
     if (stats[s.entity]?.length) return { pts: parseStats(stats[s.entity], s.stat ?? 'mean'), hold: false };
     return { pts: bucketize(parseHistory(fallback[s.entity]), period, s.stat ?? 'mean'), hold: false };
   });
+
+  for (const [i, p] of perSeries.entries()) {
+    const map = series[i].map;
+    if (map) p.pts = p.pts.map(([t, v]) => [t, map(v)]).filter(([, v]) => v != null && Number.isFinite(v));
+  }
 
   for (const p of perSeries) {
     if (!p.hold || !p.pts.length) continue;

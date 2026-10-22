@@ -1,31 +1,33 @@
-general:
-- is it possible to put this screen on the homepage? in the settings a download button to open it direcectly
-- hide the scrollbar on my phone
+Gerenal: 
+- fix the issue that when i open the home assistant app that it opens the menu item "thuis dashboard" and then immediately switches to "dashboard"
 
-home tab:
-- I want a graph on how much it is going to rain at what hour for coming 5 hours
-- put some fun icons like shorts, a sweater, ubrella based on what is needed based on the weather
-- no references to tado necessary, just climate info. we do not use the tado stuff but manage it with home assistant
+persons:
+- add a functionality that i can activate a notification for a set amount of time that i get notifications when someone home status changes
 
-climate tab: 
-- remove the tado references. just put the info in there, the scenes are managed by home assistant
-- make the thermostats of the rooms like a knob you can turn.
-- you don't need to show the second sensor in the bedroom, 1 stat is enough
-- put the off button to the most left
-- make a graphic with a house, the outside temp, inside temp, sun amount and window open
+system:
+- the zigbee network now uses the zha configuration. see the entity list for the changed items. this should be updated in the system tab so that the mqtt is removed
 
-media tab: 
-- the tv button works and turns on the tv, but the button does not stay there. the tv button should be based on the chromecast status
+car:
+- the usage unit set to kwh/100km
+- these info stats are not usefull: instant power, energy in battery (same as percentage), geladen energie, 12v batterij
+- ritten tab: see past rides whith length, energy consumed, percentage before and after, max speed, average speed, verbruik
+- cost tab: i want to see how much it costs to charge my car. below 10kw chaging is 37 cent per kwh, above is 65 cents. 
+- when i set the heat of the chairs, it does not heat up. you need to set the temp and then turn it on though separate commands
 
+agenda:
+- i want to be able to plan in my own agenda
 
-car tab:
-- the seat warming should be a dropdown
+home:
+- when i tap the rain section of the home page, i want to see a radar of the current rain arriving
 
-calendar tab:
-- I want in the settings to set the color of calendars
-- I want to be able to see other persons calendars
+climate:
+- the turn buttons are annoying because when i scroll though i move them. change them to something more usefull. 
 
-graph tab:
-- kamersensor can be ignored. just use the thermostat temps
-- also add the amount of sun in the outside graph
-- also add the batteries of the personal devices (tablet not needed)
+lights:
+- the govee vloerlamp is not reachable, just use the uplighter
+
+media:
+- my girlfriend says that there is a problem that the stereo sometimes randomly stops. if you find something clear missing then fix it but I haven't been able to test myself, could be something she is doing wrong. don't look too much into it
+
+new tabs:
+- i want a tab where i see a ground plan of my apartment and see each room with what temp, what lights, ... information on it. i want to select a room and then see all settings for that room. i included a picture of the groundplan as png here in the fold

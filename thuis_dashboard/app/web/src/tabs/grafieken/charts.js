@@ -1,16 +1,20 @@
 import {
   mdiSofaOutline, mdiBedOutline, mdiShowerHead, mdiWeatherPartlyCloudy, mdiRadiator, mdiBatteryCharging60,
-  mdiThermometer, mdiFlash, mdiSpeedometer, mdiSpeedometerSlow, mdiMapMarkerDistance, mdiEvStation,
+  mdiThermometer, mdiSpeedometer, mdiSpeedometerSlow, mdiMapMarkerDistance, mdiEvStation,
   mdiCellphone, mdiAccessPointNetwork,
-  mdiRoadVariant, mdiBatteryCharging, mdiCurrentAc, mdiLeaf, mdiMapMarkerPath, mdiCarBattery, mdiCarTireAlert,
+  mdiRoadVariant, mdiCurrentAc, mdiLeaf, mdiMapMarkerPath, mdiCarTireAlert,
 } from '@mdi/js';
 import { ROOMS, HOME, CAR_ENTITIES as CAR, PEOPLE, DOOR_SENSORS } from '$shared/config.js';
 import { PERSON_COLORS } from '../../lib/colors.js';
 import { period5min, periodDaily, periodHourly } from './data.js';
+import { toKwh100, unitOf } from '../auto/carHistory.js';
+
+/** Value mapper converting a consumption sensor (km/kWh, …) to kWh/100km. @param {string} entity */
+const kwh100 = (entity) => (/** @type {number} */ v) => toKwh100(v, unitOf(entity));
 
 const ROOM_ICONS = { living: mdiSofaOutline, slaapkamer: mdiBedOutline, badkamer: mdiShowerHead };
 const PCT = { unit: '%', range: [0, 100] };
-const friendlyLabel = (n) => (n && !/^0x[0-9a-f]+/i.test(n) ? n : 'Zigbee-sensor');
+const friendlyLabel = (n, id) => n || id.replace(/^sensor\./, '').replace(/_battery(_level)?(_\d+)?$/, '').replace(/_/g, ' ');
 
 /** @returns {import('./data.js').ChartDef[]} */
 export function klimaatCharts() {
@@ -82,15 +86,6 @@ export function autoCharts() {
       ],
     },
     {
-      id: 'car-power',
-      title: 'Instant power',
-      iconPath: mdiFlash,
-      accent: 'var(--warn)',
-      defaultRange: '24u',
-      period: period5min,
-      series: [{ entity: CAR.instantPower, label: 'Vermogen', color: '--warn', type: 'area' }],
-    },
-    {
       id: 'car-speed-day',
       title: 'Snelheid per dag',
       iconPath: mdiSpeedometer,
@@ -150,16 +145,6 @@ export function autoCharts() {
       ],
     },
     {
-      id: 'car-energy',
-      title: 'Energie in batterij',
-      iconPath: mdiBatteryCharging,
-      accent: 'var(--ok)',
-      defaultRange: '7d',
-      period: periodHourly,
-      axes: { y: { zero: true } },
-      series: [{ entity: carId('sensor', 'battery_energy'), label: 'Energie', color: '--ok', type: 'area' }],
-    },
-    {
       id: 'car-charge-elec',
       title: 'Laadstroom & spanning',
       iconPath: mdiCurrentAc,
@@ -173,17 +158,6 @@ export function autoCharts() {
       ],
     },
     {
-      id: 'car-charged',
-      title: 'Geladen energie',
-      iconPath: mdiEvStation,
-      accent: 'var(--ok)',
-      defaultRange: '30d',
-      ranges: ['7d', '30d'],
-      period: periodDaily,
-      axes: { y: { zero: true } },
-      series: [{ entity: carId('sensor', 'last_charge_energy'), stat: 'max', label: 'Laadbeurt', color: '--ok', type: 'bar', size: 0.6 }],
-    },
-    {
       id: 'car-efficiency',
       title: 'Verbruik',
       iconPath: mdiLeaf,
@@ -191,9 +165,10 @@ export function autoCharts() {
       defaultRange: '30d',
       ranges: ['7d', '30d'],
       period: periodDaily,
+      axes: { y: { unit: 'kWh/100km', zero: true } },
       series: [
-        { entity: carId('sensor', 'last_trip_efficiency'), label: 'Vorige rit', color: '--ok' },
-        { entity: carId('sensor', 'efficiency_since_last_charge'), label: 'Sinds laden', color: '--accent-2' },
+        { entity: carId('sensor', 'last_trip_efficiency'), label: 'Vorige rit', color: '--ok', unit: 'kWh/100km', map: kwh100(carId('sensor', 'last_trip_efficiency')) },
+        { entity: carId('sensor', 'efficiency_since_last_charge'), label: 'Sinds laden', color: '--accent-2', unit: 'kWh/100km', map: kwh100(carId('sensor', 'efficiency_since_last_charge')) },
       ],
     },
     {
@@ -206,16 +181,6 @@ export function autoCharts() {
       period: periodDaily,
       axes: { y: { zero: true, digits: 0 } },
       series: [{ entity: carId('sensor', 'last_trip_distance'), stat: 'max', label: 'Langste rit', color: '--accent-2', type: 'bar', size: 0.6, digits: 1 }],
-    },
-    {
-      id: 'car-12v',
-      title: '12V-batterij',
-      iconPath: mdiCarBattery,
-      accent: 'var(--info)',
-      defaultRange: '7d',
-      ranges: ['24u', '7d', '30d'],
-      period: periodHourly,
-      series: [{ entity: carId('sensor', 'ancillary_battery_voltage'), label: 'Spanning', color: '--info', type: 'area', digits: 2 }],
     },
     {
       id: 'car-tyres',
@@ -231,12 +196,27 @@ export function autoCharts() {
 }
 
 /**
+ * Battery sensors (device_class battery, %) not covered by the fixed phone/door charts, e.g. ZHA devices.
+ * @param {Record<string, any>} st
+ * @returns {string[]}
+ */
+export function extraBatterySensors(st) {
+  const known = new Set([...PEOPLE.map((p) => p.battery), ...DOOR_SENSORS.map((d) => d.battery), CAR.soc]);
+  return Object.values(st)
+    .filter((s) => s.entity_id.startsWith('sensor.') && s.attributes?.device_class === 'battery' && s.attributes?.unit_of_measurement === '%')
+    .map((s) => s.entity_id)
+    .filter((id) => !known.has(id) && !id.startsWith('sensor.tablet_'))
+    .sort();
+}
+
+/**
  * @param {Record<string,string>} labels sensor label overrides (household.sensorLabels)
  * @param {(id: string) => string|undefined} friendly
+ * @param {string[]} [extra] additional battery sensors (see extraBatterySensors)
  * @returns {import('./data.js').ChartDef[]}
  */
-export function batterijCharts(labels, friendly) {
-  const zigbee = 'sensor.0x103597000087635a_battery';
+export function batterijCharts(labels, friendly, extra = []) {
+  const colors = ['--accent-3', '--info', '--warn', '--ok', '--heat', '--cool'];
   return [
     {
       id: 'bat-phones',
@@ -254,7 +234,7 @@ export function batterijCharts(labels, friendly) {
       axes: { y: PCT },
       series: [
         ...DOOR_SENSORS.map((d, i) => ({ entity: d.battery, label: labels?.[d.entity] ?? d.defaultLabel, color: ['--accent', '--accent-2'][i % 2], digits: 0 })),
-        { entity: zigbee, label: friendlyLabel(friendly(zigbee)), color: '--accent-3', digits: 0 },
+        ...extra.map((id, i) => ({ entity: id, label: friendlyLabel(friendly(id), id), color: colors[i % colors.length], digits: 0 })),
       ],
     },
   ];

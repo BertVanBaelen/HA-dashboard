@@ -1,6 +1,7 @@
 import { ALL_OFF, LIGHTS, MEDIA, PEOPLE, ROOMS, tvIsOn, stereoIsOn } from '../shared/config.js';
 
 const ARRIVAL_DEBOUNCE_MS = 30 * 60 * 1000;
+const PRESENCE_DEBOUNCE_MS = 2 * 60 * 1000;
 const HEAT_ACTION_PREFIX = 'DASH_HEAT_';
 
 export class Actions {
@@ -9,6 +10,7 @@ export class Actions {
     this.store = store;
     this.log = log;
     this.lastArrival = new Map();
+    this.lastPresence = new Map();
   }
 
   isOn(entityId) {
@@ -74,7 +76,8 @@ export class Actions {
   async applyPreset(presetId) {
     const preset = this.store.getHousehold().presets.find((p) => p.id === presetId);
     if (!preset) throw new Error('Preset niet gevonden');
-    const steps = Object.entries(preset.lights).map(([entityId, cfg]) => [entityId, async () => {
+    const known = new Set(LIGHTS.map((l) => l.entity));
+    const steps = Object.entries(preset.lights).filter(([entityId]) => known.has(entityId)).map(([entityId, cfg]) => [entityId, async () => {
       if (!cfg.on) return this.ha.callService('light', 'turn_off', {}, { entity_id: entityId });
       const data = {};
       if (cfg.brightness != null) data.brightness_pct = cfg.brightness;
@@ -200,6 +203,9 @@ export class Actions {
       if (prev && prev !== 'home' && newState.state === 'home') {
         this.onArrival(entityId, newState).catch((e) => this.log.error?.('[arrival]', e));
       }
+      if (prev && prev !== newState.state && (prev === 'home' || newState.state === 'home') && !['unknown', 'unavailable'].includes(prev)) {
+        this.onPresenceChange(entityId, prev, newState).catch((e) => this.log.error?.('[presence]', e));
+      }
     });
     this.ha.on('states', (states) => {
       for (const [id, s] of states) if (id.startsWith('person.')) this.prevPersonState.set(id, s.state);
@@ -218,6 +224,41 @@ export class Actions {
         })
         .catch((e) => this.log.error?.('[arrival] heat failed', e));
     });
+  }
+
+  /** Timed "komen & gaan" notifications: users who switched it on get a push for every home/away change of someone else. */
+  async onPresenceChange(personId, prev, personState) {
+    const now = Date.now();
+    const key = `${personId}|${personState.state === 'home' ? 'home' : 'away'}`;
+    if (now - (this.lastPresence.get(key) ?? 0) < PRESENCE_DEBOUNCE_MS) return;
+    this.lastPresence.set(key, now);
+    const who = PEOPLE.find((p) => p.person === personId)?.name ?? personState.attributes?.friendly_name ?? personId.split('.')[1];
+    const arrived = personState.state === 'home';
+    const where = !arrived && personState.state !== 'not_home' ? ` (${personState.state})` : '';
+    const time = new Date(now).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit', timeZone: process.env.TZ || undefined });
+    let changed = false;
+    for (const [userId, prefs] of Object.entries(this.store.allUsers())) {
+      const until = Number(prefs.presenceWatchUntil) || 0;
+      if (!until) continue;
+      if (until < now) {
+        prefs.presenceWatchUntil = null;
+        changed = true;
+        continue;
+      }
+      if (personState.attributes?.user_id === userId) continue;
+      const service = this.notifyServiceFor(userId);
+      if (!service) {
+        this.log.warn?.(`[presence] no notify service for user ${userId}`);
+        continue;
+      }
+      this.log.info?.(`[presence] ${personId} ${prev} → ${personState.state}, notifying notify.${service}`);
+      await this.ha.callService('notify', service, {
+        title: arrived ? `${who} is thuis 🏠` : `${who} is vertrokken 👋`,
+        message: arrived ? `${who} kwam thuis om ${time}` : `${who} verliet het huis om ${time}${where}`,
+        data: { tag: `thuis-dashboard-presence-${personId}` },
+      }).catch((e) => this.log.error?.('[presence] notify failed', e.message));
+    }
+    if (changed) await this.store.save();
   }
 
   async onArrival(personId, personState) {

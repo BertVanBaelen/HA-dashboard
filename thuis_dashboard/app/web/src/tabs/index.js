@@ -1,6 +1,7 @@
 // Lazy tab loaders. Each tab is a Svelte component without props.
 export const tabLoaders = {
   home: () => import('./Home.svelte'),
+  plattegrond: () => import('./Plattegrond.svelte'),
   klimaat: () => import('./Klimaat.svelte'),
   verlichting: () => import('./Verlichting.svelte'),
   media: () => import('./Media.svelte'),

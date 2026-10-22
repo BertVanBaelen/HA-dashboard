@@ -10,6 +10,7 @@
   import { PERSON_COLORS, colorFor } from '../lib/colors.js';
   import { mdiHanger } from '@mdi/js';
   import RainChart from './home/RainChart.svelte';
+  import RainRadar from './home/RainRadar.svelte';
   import Outfit from './home/Outfit.svelte';
   import Card from '../components/Card.svelte';
   import Icon from '../components/Icon.svelte';
@@ -24,6 +25,7 @@
   let busy = $state(/** @type {string|null} */ (null));
   let now = $state(new Date());
   let forecastReady = $state(false);
+  let radarOpen = $state(false);
 
   async function loadForecast() {
     try {
@@ -148,7 +150,7 @@
       </div>
     {/if}
     {#if next5.length}
-      <RainChart hours={next5} />
+      <RainChart hours={next5} onclick={() => (radarOpen = true)} />
     {/if}
     {#if daily.length}
       <div class="days">
@@ -255,6 +257,8 @@
     {/if}
   </div>
 </div>
+
+<RainRadar bind:open={radarOpen} />
 
 <style>
   .home { display: flex; flex-direction: column; gap: var(--gap); padding-bottom: 10px; }

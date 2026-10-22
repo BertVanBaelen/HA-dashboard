@@ -1,8 +1,10 @@
 <script>
   import { fmtTime } from '../../lib/format.js';
 
-  /** @type {{ hours: any[] }} */
-  let { hours } = $props();
+  import Icon from '../../components/Icon.svelte';
+
+  /** @type {{ hours: any[], onclick?: () => void }} */
+  let { hours, onclick } = $props();
 
   const WET = 0.1;
   const mmFmt = (v) => (v ?? 0).toLocaleString('nl-BE', { maximumFractionDigits: 1, minimumFractionDigits: v > 0 && v < 10 ? 1 : 0 });
@@ -34,10 +36,11 @@
   const drops = (mm) => (mm < WET ? 0 : mm < 0.8 ? 1 : mm < 2 ? 2 : 3);
 </script>
 
-<div class="rain-chart" class:wet>
+<svelte:element this={onclick ? 'button' : 'div'} type={onclick ? 'button' : undefined} class="rain-chart" class:wet class:tap={!!onclick} {onclick} role={onclick ? 'button' : undefined} aria-label={onclick ? 'Toon buienradar' : undefined}>
   <div class="sum">
     <span class="emoji" class:bob={wet}>{summary.emoji}</span>
     <span class="txt">{summary.text}</span>
+    {#if onclick}<span class="radar-hint"><Icon name="radar" size={14} />Radar<Icon name="chevronRight" size={14} /></span>{/if}
   </div>
   <div class="bars">
     {#each slots as s, i (s.key)}
@@ -58,10 +61,13 @@
       </div>
     {/each}
   </div>
-</div>
+</svelte:element>
 
 <style>
   .rain-chart { margin: 0 14px 12px; padding: 12px 12px 10px; border-radius: 18px; background: var(--surface-2); display: flex; flex-direction: column; gap: 10px; }
+  .rain-chart.tap { font: inherit; color: inherit; text-align: inherit; border: 0; cursor: pointer; transition: transform 0.15s var(--ease); width: calc(100% - 28px); }
+  .rain-chart.tap:active { transform: scale(0.98); }
+  .radar-hint { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; font-size: 0.75rem; font-weight: 600; color: var(--info); white-space: nowrap; }
   .rain-chart.wet { background: color-mix(in srgb, var(--info) 10%, var(--surface-2)); }
   .sum { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 0.92rem; }
   .emoji { font-size: 1.25rem; display: inline-block; animation: pop 0.6s var(--spring); }

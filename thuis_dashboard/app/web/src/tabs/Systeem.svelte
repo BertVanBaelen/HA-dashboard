@@ -10,7 +10,8 @@
   import ZigbeeCard from './systeem/ZigbeeCard.svelte';
   import BatteryCard from './systeem/BatteryCard.svelte';
   import ConnectivityCard from './systeem/ConnectivityCard.svelte';
-  import { BACKUP, ZIGBEE, BACKUP_MAX_AGE_MS, collectUpdates, collectBatteries, collectConnectivity } from './systeem/data.js';
+  import { BACKUP, BACKUP_MAX_AGE_MS, collectUpdates, collectBatteries, collectConnectivity } from './systeem/data.js';
+  import { zhaSummary } from './systeem/zha.js';
 
   let now = $state(Date.now());
   onMount(() => {
@@ -28,16 +29,22 @@
     return unavailable(s) ? null : new Date(s.state).getTime() || null;
   });
   const backupOld = $derived(!lastBackup || now - lastBackup > BACKUP_MAX_AGE_MS);
-  const zb = $derived($states[ZIGBEE.connection]);
-  const zigbeeOk = $derived(zb?.state === 'on');
+  const zb = $derived($zhaSummary);
+  const zigbeeDown = $derived(zb.known && (zb.offline > 0 || zb.coordinatorOk === false));
+  const zigbeeChip = $derived.by(() => {
+    if (!zb.known) return { text: zb.error ? 'Zigbee fout' : 'Zigbee n.b.', kind: zb.error ? 'danger' : 'neutral' };
+    if (zb.coordinatorOk === false) return { text: 'Zigbee offline', kind: 'danger' };
+    if (zb.offline) return { text: `${zb.offline} Zigbee offline`, kind: 'danger' };
+    return { text: 'Zigbee OK', kind: 'ok' };
+  });
 
-  const level = $derived(backupOld || (zb && !zigbeeOk) || lowBatteries ? 'danger' : updateCount || offline || weakBatteries ? 'warn' : 'ok');
+  const level = $derived(backupOld || zigbeeDown || lowBatteries ? 'danger' : updateCount || offline || weakBatteries ? 'warn' : 'ok');
   const headline = $derived(level === 'ok' ? 'Alles in orde' : level === 'warn' ? 'Aandacht nodig' : 'Actie vereist');
 
   const chips = $derived([
     { key: 'updates', icon: mdiUpdate, text: updateCount ? `${updateCount} update${updateCount > 1 ? 's' : ''}` : 'Up-to-date', kind: updateCount ? 'warn' : 'ok' },
     { key: 'backups', icon: mdiBackupRestore, text: lastBackup ? `Backup ${relTime(lastBackup)}` : 'Geen backup', kind: backupOld ? 'danger' : 'ok' },
-    { key: 'zigbee', icon: mdiZigbee, text: !zb ? 'Zigbee n.b.' : zigbeeOk ? 'Zigbee OK' : 'Zigbee offline', kind: !zb ? 'neutral' : zigbeeOk ? 'ok' : 'danger' },
+    { key: 'zigbee', icon: mdiZigbee, ...zigbeeChip },
     { key: 'batterijen', icon: mdiBatteryAlert, text: lowBatteries ? `${lowBatteries} batterij${lowBatteries > 1 ? 'en' : ''} laag` : 'Batterijen OK', kind: lowBatteries ? 'danger' : weakBatteries ? 'warn' : 'ok' },
     ...(offline ? [{ key: 'connectiviteit', icon: mdiWifiOff, text: `${offline} offline`, kind: 'danger' }] : []),
   ]);
@@ -75,7 +82,7 @@
       <BackupCard {now} />
     </div>
     <div class="col" style="gap:var(--gap)">
-      <div class="section-title" id="sys-zigbee">Zigbee2MQTT</div>
+      <div class="section-title" id="sys-zigbee">Zigbee</div>
       <ZigbeeCard {now} />
     </div>
   </div>

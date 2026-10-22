@@ -6,7 +6,7 @@
     mdiMapMarkerDistance, mdiEvStation, mdiPower, mdiCarDefrostFront, mdiCarDefrostRear, mdiCarSeatHeater, mdiSteering,
     mdiAccountTie, mdiSnowflakeMelt, mdiFan, mdiThermometer, mdiCarBack, mdiAlarmLight, mdiEvPlugType2, mdiPalmTree,
     mdiBatteryHeart, mdiCalendarClock, mdiCarTireAlert, mdiMapMarker, mdiGoogleMaps, mdiOpenInNew, mdiWindowOpenVariant,
-    mdiCounter, mdiAlertCircle, mdiCarConnected, mdiCurrentAc, mdiGestureTap, mdiChartLine,
+    mdiCounter, mdiAlertCircle, mdiCarConnected, mdiCurrentAc, mdiGestureTap, mdiChartLine, mdiMapMarkerPath, mdiCurrencyEur,
   } from '@mdi/js';
   import { CAR_ENTITIES as E, CAR_FLAGS } from '$shared/config.js';
   import { states, household, callService, toast, isOn, unavailable, num, attr } from '../lib/api.js';
@@ -24,10 +24,14 @@
   import TyreView from './auto/TyreView.svelte';
   import TimeField from './auto/TimeField.svelte';
   import AutoData from './auto/AutoData.svelte';
+  import Ritten from './auto/Ritten.svelte';
+  import Kosten from './auto/Kosten.svelte';
 
   const VIEWS = [
     { value: 'bediening', label: 'Bediening', iconPath: mdiGestureTap },
     { value: 'data', label: 'Data', iconPath: mdiChartLine },
+    { value: 'ritten', label: 'Ritten', iconPath: mdiMapMarkerPath },
+    { value: 'kosten', label: 'Kosten', iconPath: mdiCurrencyEur },
   ];
   const storedView = sessionStorage.getItem('auto.view');
   let view = $state(VIEWS.some((v) => v.value === storedView) ? storedView : 'bediening');
@@ -186,12 +190,52 @@
     { key: 'seatL', label: 'Links', sw: E.seatLeft, lvl: E.seatLeftLevel },
     { key: 'seatR', label: 'Rechts', sw: E.seatRight, lvl: E.seatRightLevel },
   ];
-  /** Dropdown: 'off' turns the switch off; a level selects it and turns the switch on. */
+  /** @param {string} key @param {string[]} watch @param {any} want @param {number} ttl */
+  const hold = (key, watch, want, ttl) => (pending = { ...pending, [key]: { watch, snap: snapshot(watch), until: Date.now() + ttl, want } });
+  /** @param {string} key */
+  const release = (key) => {
+    const { [key]: _, ...rest } = pending;
+    pending = rest;
+  };
+  /** Resolve after at least minMs once cond() holds, or after maxMs. */
+  const waitFor = (/** @type {() => boolean} */ cond, minMs, maxMs) =>
+    new Promise((resolve) => {
+      const t0 = Date.now();
+      const iv = setInterval(() => {
+        const dt = Date.now() - t0;
+        if ((dt >= minMs && cond()) || dt >= maxMs) {
+          clearInterval(iv);
+          resolve(undefined);
+        }
+      }, 250);
+    });
+  /**
+   * Dropdown: 'off' turns the switch off. A level is selected first; once the car accepted it, the switch is
+   * (always, even when already on) turned on as a separate command – the car needs both to actually heat.
+   */
   async function setSeat(/** @type {typeof seats[number]} */ seat, /** @type {string} */ v) {
-    const on = isOn(s(seat.sw));
-    if (v === 'off') return on && send(seat.key, 'switch', 'turn_off', seat.sw, { want: false });
-    if (v !== 'on' && s(seat.lvl)?.state !== v) await send(seat.key + 'L', 'select', 'select_option', seat.lvl, { data: { option: v }, want: v });
-    if (!on) await send(seat.key, 'switch', 'turn_on', seat.sw, { want: true });
+    const lk = seat.key + 'L';
+    if (busy(seat.key) || busy(lk)) return;
+    if (v === 'off' || v === '0') {
+      release(lk);
+      return send(seat.key, 'switch', 'turn_off', seat.sw, { want: false });
+    }
+    const level = v !== 'on';
+    hold(seat.key, [seat.sw], true, WAIT_MS);
+    if (level) hold(lk, [seat.lvl], v, WAIT_MS);
+    try {
+      if (level) {
+        await callService('select', 'select_option', { option: v }, seat.lvl, 'Niveau verzonden…');
+        await waitFor(() => s(seat.lvl)?.state === v, 1500, 5000);
+      }
+      const wasOn = isOn(s(seat.sw));
+      await callService('switch', 'turn_on', {}, seat.sw, 'Stoelverwarming aan…');
+      // An already-on switch will not change state: don't keep the spinner for the full timeout.
+      if (wasOn) hold(seat.key, [seat.sw], true, 10e3);
+    } catch {
+      release(seat.key);
+      release(lk);
+    }
   }
 
   // A-05 other actions
@@ -246,6 +290,14 @@
 {#if view === 'data'}
   <div in:fly={{ y: 10, duration: 260 }}>
     <AutoData />
+  </div>
+{:else if view === 'ritten'}
+  <div in:fly={{ y: 10, duration: 260 }}>
+    <Ritten />
+  </div>
+{:else if view === 'kosten'}
+  <div in:fly={{ y: 10, duration: 260 }}>
+    <Kosten />
   </div>
 {:else}
 <div class="auto stagger" in:fly={{ y: 10, duration: 260 }}>
@@ -577,7 +629,7 @@
 
 <style>
   .auto-root { display: flex; flex-direction: column; gap: var(--gap); padding-bottom: 10px; }
-  .views { max-width: 420px; width: 100%; margin: 0 auto; }
+  .views { max-width: 560px; width: 100%; margin: 0 auto; }
   .auto { display: flex; flex-direction: column; gap: var(--gap); }
 
   .hero-in { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
