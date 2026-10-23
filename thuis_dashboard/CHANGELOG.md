@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2
+- Tabblad **Plattegrond** heet nu **Huisje** en toont de kamers ook als huisje (zoals bij Klimaat). Wissel onder de
+  tekening tussen huisje en plattegrond; je keuze wordt onthouden. Kamers zonder apparaten staan niet in het huisje.
+
 ## 0.5.1
 - Spotify: kies zelf het **uitvoertoestel** (tik op "Speelt op …" bovenaan de Spotify-kaart). De keuze wordt per
   gebruiker onthouden; alles wat je start speelt daarna op dat toestel.

@@ -1,7 +1,5 @@
 <script>
-  import {
-    mdiFire, mdiLightbulbOn, mdiLightbulbOutline, mdiWindowOpenVariant, mdiDoorOpen, mdiPower, mdiChevronRight,
-  } from '@mdi/js';
+  import { mdiWindowOpenVariant, mdiDoorOpen, mdiChevronRight, mdiFloorPlan, mdiHomeVariantOutline } from '@mdi/js';
   import { FLOORPLAN, FLOORPLAN_ROOMS } from '$shared/config.js';
   import { states, household } from '../lib/api.js';
   import Icon from '../components/Icon.svelte';
@@ -10,6 +8,15 @@
   import { summarize, fmt } from './plattegrond/summary.js';
   import { css } from './verlichting/color.js';
   import FloorSvg from './plattegrond/FloorSvg.svelte';
+  import HouseView from './plattegrond/HouseView.svelte';
+  import RoomBadge from './plattegrond/RoomBadge.svelte';
+
+  const VIEW_KEY = 'huisje.view';
+  let view = $state(localStorage.getItem(VIEW_KEY) === 'plan' ? 'plan' : 'house');
+  function setView(/** @type {'plan'|'house'} */ v) {
+    view = v;
+    localStorage.setItem(VIEW_KEY, v);
+  }
 
   /** @type {import('./plattegrond/summary.js').PlanRoom[]} */
   const rooms = FLOORPLAN_ROOMS;
@@ -20,6 +27,8 @@
   const compact = (/** @type {number[]} */ r) => r[3] / vh < 0.15 || r[2] / vw < 0.26;
 
   const sums = $derived(Object.fromEntries(rooms.map((r) => [r.id, summarize(r, $states, $household)])));
+  const houseRooms = $derived(rooms.filter((r) => sums[r.id].deviceCount > 0));
+  const bareRooms = $derived(rooms.filter((r) => !sums[r.id].deviceCount));
 
   let selected = $state(/** @type {import('./plattegrond/summary.js').PlanRoom|null} */ (null));
   let open = $state(false);
@@ -41,8 +50,11 @@
   }
 </script>
 
-<div class="plattegrond">
+<div class="plattegrond" class:house-mode={view === 'house'}>
   <div class="plan-wrap">
+    {#if view === 'house'}
+      <HouseView rooms={houseRooms} {sums} selectedId={open ? selected?.id : null} onselect={show} {describe} />
+    {:else}
     <div class="plan no-swipe" style="aspect-ratio:{vw} / {vh}" role="group" aria-label="Plattegrond van het appartement">
       <FloorSvg />
       {#each rooms as r (r.id)}
@@ -59,43 +71,26 @@
           onclick={() => show(r)}
         >
           <span class="glow"></span>
-          <span class="badge" class:compact={compact(r.rect)}>
-            <span class="name"><Icon path={planIcon(r.icon)} size={13} /><span class="ellipsis">{r.name}</span></span>
-            {#if s.deviceCount}
-              {#if s.temp != null}
-                <span class="temp num">{fmt(s.temp)}°{#if s.humidity != null}<small>{fmt(s.humidity, 0)}%</small>{/if}</span>
-              {/if}
-              <span class="inds">
-                {#if s.hasClimate}
-                  <i class="ind heat" class:on={s.heating} title={s.heating ? 'Verwarmt' : 'Verwarming niet actief'}><Icon path={mdiFire} size={14} /></i>
-                {/if}
-                {#if s.lightCount}
-                  <i class="ind lamp" class:on={s.lightsOn > 0} title="{s.lightsOn} van {s.lightCount} lampen aan">
-                    <Icon path={s.lightsOn ? mdiLightbulbOn : mdiLightbulbOutline} size={14} />{#if s.lightsOn}<b>{s.lightsOn}</b>{/if}
-                  </i>
-                {/if}
-                {#if s.mediaOn}
-                  <i class="ind media on" class:playing={s.mediaPlaying} title={s.mediaPlaying ? 'Media speelt' : 'Media aan'}><Icon path={planIcon(s.mediaKind)} size={14} /></i>
-                {/if}
-                {#if s.switchesOn}
-                  <i class="ind sw on" title="{s.switchesOn} aan"><Icon path={mdiPower} size={13} /><b>{s.switchesOn}</b></i>
-                {/if}
-                {#if s.openCount}
-                  <i class="ind open on" title="Open"><Icon path={s.openKind === 'door' ? mdiDoorOpen : mdiWindowOpenVariant} size={14} /></i>
-                {/if}
-              </span>
-            {/if}
-          </span>
+          <RoomBadge room={r} {s} compact={compact(r.rect)} />
         </button>
       {/each}
     </div>
-    <p class="hint tiny faint">Tik op een ruimte voor alle bediening</p>
+    {/if}
+    <div class="under">
+      <p class="hint tiny faint">Tik op een ruimte voor alle bediening</p>
+      <div class="view-switch" role="group" aria-label="Weergave">
+        <button class:on={view === 'house'} aria-pressed={view === 'house'} title="Huisje" onclick={() => setView('house')}><Icon path={mdiHomeVariantOutline} size={15} /></button>
+        <button class:on={view === 'plan'} aria-pressed={view === 'plan'} title="Plattegrond" onclick={() => setView('plan')}><Icon path={mdiFloorPlan} size={15} /></button>
+      </div>
+    </div>
   </div>
 
   <div class="list">
-    <h3 class="section-title">Ruimtes</h3>
+    {#each [{ title: 'Ruimtes met apparaten', list: houseRooms }, { title: 'Ruimtes zonder apparaten', list: bareRooms }] as sec (sec.title)}
+    {#if sec.list.length}
+    <h3 class="section-title">{sec.title}</h3>
     <div class="rooms stagger">
-      {#each rooms as r (r.id)}
+      {#each sec.list as r (r.id)}
         {@const s = sums[r.id]}
         <button class="room-row" class:lit={s.lightsOn > 0} class:heating={s.heating} class:bare={!s.deviceCount} style="--lamp:{s.lampColor ? css(s.lampColor) : 'var(--accent)'}" onclick={() => show(r)}>
           <span class="rr-ic"><Icon path={planIcon(r.icon)} size={22} /></span>
@@ -108,6 +103,8 @@
         </button>
       {/each}
     </div>
+    {/if}
+    {/each}
   </div>
 </div>
 
@@ -139,7 +136,7 @@
     -webkit-tap-highlight-color: transparent;
   }
   .room:hover, .room:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); outline: none; }
-  .room:active .badge { transform: scale(0.94); }
+  .room:active :global(.badge) { transform: scale(0.94); }
   .room.sel { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
   .room.heating { background: color-mix(in srgb, var(--heat) 12%, transparent); }
   .room.alert { border-color: color-mix(in srgb, var(--danger) 55%, transparent); border-style: dashed; }
@@ -150,38 +147,15 @@
   }
   .room.lit .glow { opacity: calc(0.25 + var(--lvl) * 0.45); animation: breathe 4s ease-in-out infinite; }
 
-  .badge {
-    display: flex; flex-direction: column; align-items: center; gap: 2px; max-width: 100%; min-width: 0;
-    padding: 5px 9px 6px; border-radius: 14px; line-height: 1.15;
-    background: color-mix(in srgb, var(--surface-solid) 88%, transparent); border: 1px solid var(--border);
-    box-shadow: 0 6px 18px -8px rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    transition: transform 0.25s var(--spring);
-  }
-  .badge.compact { flex-direction: row; gap: 6px; padding: 4px 8px; border-radius: 999px; }
-  .bare .badge { background: color-mix(in srgb, var(--surface-solid) 70%, transparent); box-shadow: none; color: var(--text-2); }
-  .name { display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 700; min-width: 0; max-width: 100%; }
-  .name :global(svg) { color: var(--text-3); }
-  .temp { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; }
-  .temp small { font-size: 0.68rem; font-weight: 600; color: var(--text-2); margin-left: 4px; }
-  .compact .temp { font-size: 0.8rem; }
-  .inds { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; }
-  .inds:empty { display: none; }
-  .ind {
-    display: inline-flex; align-items: center; gap: 1px; height: 20px; min-width: 20px; padding: 0 3px; justify-content: center;
-    border-radius: 999px; font-style: normal; color: var(--text-3); background: var(--surface-2);
-    transition: color 0.3s, background 0.3s, box-shadow 0.4s;
-  }
-  .ind b { font-size: 0.68rem; font-weight: 800; }
-  .ind.heat.on { color: #fff; background: var(--heat); box-shadow: 0 0 10px -2px var(--heat); }
-  .ind.heat.on :global(svg) { animation: flicker 1.8s ease-in-out infinite; }
-  .ind.lamp.on { color: #3a2a00; background: var(--lamp); box-shadow: 0 0 12px 0 var(--lamp); }
-  .ind.media.on { color: #fff; background: #6366f1; }
-  .ind.media.playing { animation: pulse-ring 1.8s var(--ease) infinite; --pulse: #6366f1; }
-  .ind.sw.on { color: #fff; background: var(--info); }
-  .ind.open.on { color: #fff; background: var(--danger); animation: pulse-ring 1.6s var(--ease) infinite; --pulse: var(--danger); }
-
+  .under { width: var(--plan-w); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .hint { margin: 0; }
+  .view-switch { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); opacity: 0.75; transition: opacity 0.2s; }
+  .view-switch:hover, .view-switch:focus-within { opacity: 1; }
+  .view-switch button {
+    display: grid; place-items: center; width: 26px; height: 22px; padding: 0; border: 0; border-radius: 999px; cursor: pointer;
+    background: transparent; color: var(--text-3); transition: background 0.25s, color 0.25s;
+  }
+  .view-switch button.on { background: var(--surface-solid); color: var(--accent); box-shadow: 0 1px 4px -1px rgba(15, 23, 42, 0.3); }
 
   .rooms { display: flex; flex-direction: column; gap: 8px; }
   .room-row {
@@ -200,8 +174,7 @@
   .room-row.lit .rr-ic { background: var(--lamp); color: #fff; box-shadow: 0 0 18px -4px var(--lamp); }
 
   @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
-  @keyframes flicker { 0%, 100% { transform: scale(1) rotate(0); } 30% { transform: scale(1.12) rotate(-4deg); } 60% { transform: scale(0.95) rotate(3deg); } }
   @media (prefers-reduced-motion: reduce) {
-    .room.lit .glow, .ind.heat.on :global(svg), .ind.media.playing, .ind.open.on { animation: none; }
+    .room.lit .glow { animation: none; }
   }
 </style>

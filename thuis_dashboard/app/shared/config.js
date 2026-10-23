@@ -304,7 +304,7 @@ export const FLOORPLAN_ROOMS = [
 
 export const TABS = [
   { id: 'home', label: 'Home', icon: 'home' },
-  { id: 'plattegrond', label: 'Plattegrond', icon: 'floorPlan' },
+  { id: 'plattegrond', label: 'Huisje', icon: 'floorPlan' },
   { id: 'klimaat', label: 'Klimaat', icon: 'thermostat' },
   { id: 'verlichting', label: 'Verlichting', icon: 'lightbulb' },
   { id: 'media', label: 'Media', icon: 'television' },
