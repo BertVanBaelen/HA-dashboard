@@ -58,6 +58,7 @@ const sameDevice = (name) => !!name && name.toLowerCase().includes(MEDIA.spotify
 /** Same output device by name; any name containing the stereo's name counts as the stereo. */
 const sameTarget = (name, target) => !!name && (name.toLowerCase() === target.toLowerCase() || (sameDevice(name) && sameDevice(target)));
 // SpotifyPlus needs the Spotify Connect login (integration options) to wake a device that Spotify doesn't list yet
+const FORBIDDEN = /\b403\b|forbidden/i;
 const NEEDS_CONNECT_LOGIN = /SAM1005E|spotifyConnect(Username|Password|LoginId)|configuration option was not supplied/i;
 
 const isSpotifyPlus = (id, s) => id.startsWith('media_player.') && !!s?.attributes && 'sp_user_id' in s.attributes;
@@ -201,7 +202,15 @@ export class Spotify {
   /** Contents of an album, playlist, artist or podcast. */
   async open(uri) {
     const { type, id } = parseUri(uri);
-    if (type === 'playlist') return { tracks: list((await this.#svc('get_playlist_items', { playlist_id: id, limit_total: 200 }, true))?.items) };
+    if (type === 'playlist') {
+      try {
+        return { tracks: list((await this.#svc('get_playlist_items', { playlist_id: id, limit_total: 200 }, true))?.items) };
+      } catch (err) {
+        // Spotify (development mode, 2026) only lists the contents of playlists you own or collaborate on; playing still works
+        if (FORBIDDEN.test(String(err?.message ?? err))) return { tracks: [], locked: true };
+        throw err;
+      }
+    }
     if (type === 'album') return { tracks: list((await this.#svc('get_album_tracks', { album_id: id, limit_total: 100 }, true))?.items) };
     if (type === 'show') return { tracks: list((await this.#svc('get_show_episodes', { show_id: id, limit_total: 50 }, true))?.items) };
     if (type === 'artist') {

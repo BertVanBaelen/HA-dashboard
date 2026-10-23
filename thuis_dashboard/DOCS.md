@@ -91,6 +91,9 @@ Eenmalige instelling (Spotify **Premium** is nodig):
    SpotifyPlus → **Configureren** (opties). Zonder die login krijg je de melding dat de stereo slaapt
    (SpotifyPlus-fout SAM1005E); kies hem dan één keer in de Spotify-app of kies een ander toestel.
 
+Spotify laat apps in development mode alleen de nummers van **je eigen** afspeellijsten (of waar je aan
+meewerkt) zien. Bij afspeellijsten van anderen toont de kaart geen nummerlijst, maar Afspelen en Shuffle werken wel.
+
 De naam van het toestel en (optioneel) de SpotifyPlus-entiteit staan in `app/shared/config.js`
 (`MEDIA.spotify`). Zonder entiteit wordt de eerste SpotifyPlus-speler automatisch gebruikt.
 

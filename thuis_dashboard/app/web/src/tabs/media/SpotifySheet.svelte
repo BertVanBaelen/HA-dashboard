@@ -17,7 +17,7 @@
 
   /** Navigation stack inside the sheet (artist → album). */
   let stack = $state(/** @type {SpItem[]} */ ([]));
-  let data = $state(/** @type {{tracks:SpItem[],albums?:SpItem[]}|null} */ (null));
+  let data = $state(/** @type {{tracks:SpItem[],albums?:SpItem[],locked?:boolean}|null} */ (null));
   let error = $state('');
   let busy = $state('');
   const cur = $derived(stack[stack.length - 1] ?? null);
@@ -113,6 +113,12 @@
         <EmptyState iconPath={mdiMusicNoteOff} title="Laden mislukt" text={error}>
           <button class="btn soft sm" onclick={() => load(cur)}>Opnieuw</button>
         </EmptyState>
+      {:else if data?.locked}
+        <EmptyState
+          iconPath={mdiPlaylistMusic}
+          title="Nummers niet zichtbaar"
+          text="Spotify toont de inhoud van afspeellijsten van anderen niet meer aan deze app. Met Afspelen of Shuffle speel je ze wel af."
+        />
       {:else}
         {#if isArtist && tracks.length}<h4 class="sect">Populair</h4>{/if}
         {#if tracks.length}

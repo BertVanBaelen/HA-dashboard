@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.3
+- Spotify: afspeellijsten van iemand anders tonen geen "Forbidden"-fout meer. Spotify laat apps sinds 2026 alleen
+  de nummers van je eigen afspeellijsten zien; de kaart zegt dat nu duidelijk en Afspelen/Shuffle werkt gewoon.
+
 ## 0.5.2
 - Tabblad **Plattegrond** heet nu **Huisje** en toont de kamers ook als huisje (zoals bij Klimaat). Wissel onder de
   tekening tussen huisje en plattegrond; je keuze wordt onthouden. Kamers zonder apparaten staan niet in het huisje.
