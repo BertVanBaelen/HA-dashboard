@@ -1,12 +1,12 @@
 <script>
   import { onMount } from 'svelte';
   import { fly, scale } from 'svelte/transition';
-  import { HOME, ROOMS, PEOPLE } from '$shared/config.js';
+  import { HOME, ROOMS, PEOPLE, FLOORPLAN_ROOMS } from '$shared/config.js';
   import { states, user, prefs, household, action, callServiceResponse, num, name, toast } from '../lib/api.js';
   import { icons, weatherLabels } from '../lib/icons.js';
   import { fmtTime, fmtDay, greeting, isSameDay, startOfDay } from '../lib/format.js';
   import { fetchEvents } from '../lib/calendar.js';
-  import { goTab, openSettings } from '../lib/nav.js';
+  import { goTab, openSettings, openRoom } from '../lib/nav.js';
   import { PERSON_COLORS, colorFor } from '../lib/colors.js';
   import { mdiHanger } from '@mdi/js';
   import RainChart from './home/RainChart.svelte';
@@ -207,11 +207,21 @@
       <div class="rooms">
         {#each ROOMS as r (r.key)}
           {@const heating = Number($states[r.heating]?.state) > 0}
-          <div class="room" class:heating>
+          {@const plan = FLOORPLAN_ROOMS.find((p) => p.climate === r.key)}
+          <button
+            class="room"
+            class:heating
+            aria-label="{r.name} openen in Huisje"
+            onclick={(e) => {
+              e.stopPropagation();
+              plan ? openRoom(plan.id) : goTab('plattegrond');
+            }}
+            onkeydown={(e) => e.stopPropagation()}
+          >
             <span class="rname">{r.name}{#if heating}<span class="flame" title="Verwarmt">🔥</span>{/if}</span>
             <span class="big num">{num($states[r.temperature])}°</span>
             <span class="small muted"><Icon name="water" size={13} style="display:inline;vertical-align:-2px" />{num($states[r.humidity], 0)}%</span>
-          </div>
+          </button>
         {/each}
       </div>
     </Card>
@@ -296,7 +306,9 @@
   .pname { font-weight: 700; }
 
   .rooms { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .room { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: 16px; background: var(--surface-2); transition: background 0.4s; }
+  .room { display: flex; flex-direction: column; gap: 2px; padding: 12px; border-radius: 16px; background: var(--surface-2); transition: background 0.4s, transform 0.18s var(--spring); border: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .room:active { transform: scale(0.96); }
+  .room:hover { background: var(--surface-3); }
   .room.heating { background: color-mix(in srgb, var(--heat) 14%, transparent); }
   .rname { font-size: 0.8rem; font-weight: 600; color: var(--text-2); display: flex; gap: 4px; }
   .flame { display: inline-block; }

@@ -10,6 +10,8 @@
   import FloorSvg from './plattegrond/FloorSvg.svelte';
   import HouseView from './plattegrond/HouseView.svelte';
   import RoomBadge from './plattegrond/RoomBadge.svelte';
+  import SolarSun from './plattegrond/SolarSun.svelte';
+  import { roomRequest } from '../lib/nav.js';
 
   const VIEW_KEY = 'huisje.view';
   let view = $state(localStorage.getItem(VIEW_KEY) === 'plan' ? 'plan' : 'house');
@@ -37,6 +39,14 @@
     open = true;
   }
 
+  $effect(() => {
+    const id = $roomRequest;
+    if (!id) return;
+    roomRequest.set(null);
+    const r = rooms.find((x) => x.id === id);
+    if (r) show(r);
+  });
+
   function describe(/** @type {ReturnType<typeof summarize>} */ s) {
     if (!s.deviceCount) return 'Geen apparaten';
     const parts = [];
@@ -57,6 +67,7 @@
     {:else}
     <div class="plan no-swipe" style="aspect-ratio:{vw} / {vh}" role="group" aria-label="Plattegrond van het appartement">
       <FloorSvg />
+      <svg class="plan-sun" viewBox="0 0 135 44" aria-hidden="true"><SolarSun cx={114} cy={22} id="ps" scale={0.5} labelSide="left" labelGap={2} /></svg>
       {#each rooms as r (r.id)}
         {@const s = sums[r.id]}
         <button
@@ -128,6 +139,8 @@
     border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow);
     background: var(--surface-2); user-select: none; -webkit-user-select: none;
   }
+
+  .plan-sun { position: absolute; top: 0; right: 0; width: 45%; height: auto; z-index: 1; pointer-events: none; overflow: visible; }
 
   .room {
     position: absolute; display: grid; place-items: center; padding: 3px; margin: 0; cursor: pointer;

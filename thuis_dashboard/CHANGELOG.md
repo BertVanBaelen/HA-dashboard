@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.5
+- Buienradar: nu een kaart met tijdslider (laatste 2 uur, afspelen/pauze) en een marker op jouw locatie
+  (of thuis als je locatie onbekend is). Bron: RainViewer.
+- Home: tik op een kamer in **Binnen** om meteen naar die kamer in **Huisje** te gaan.
+- Huisje: de zon van het Klimaat-tabblad (volgt het zonnepercentage, 's nachts de maan) staat nu ook in het
+  huisje en op de plattegrond.
+- Stereo: de knoppen Soundbar aan/uit en Ingang zijn kleiner.
+
 ## 0.5.4
 - Spotify: de volumeslider is weg; gebruik de volumeknoppen van de soundbar.
 - Stereo: **Soundbar aan/uit** en **Ingang wisselen** staan nu meteen onder de soundbar-volumeknoppen (niet meer

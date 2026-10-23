@@ -4,6 +4,7 @@
   import { states } from '../../lib/api.js';
   import { css } from '../verlichting/color.js';
   import RoomBadge from './RoomBadge.svelte';
+  import SolarSun from './SolarSun.svelte';
 
   /**
    * House-shaped view of the rooms (same room buttons as the floor plan).
@@ -52,19 +53,10 @@
 <div class="house no-swipe" class:night style="aspect-ratio:{VW} / {VH}" role="group" aria-label="Huisje met alle ruimtes">
   <svg viewBox="0 0 {VW} {VH}" aria-hidden="true">
     <defs>
-      <radialGradient id="hv-sun">
-        <stop offset="0%" stop-color="#fde68a" stop-opacity="0.95" />
-        <stop offset="45%" stop-color="#fbbf24" stop-opacity="0.35" />
-        <stop offset="100%" stop-color="#fbbf24" stop-opacity="0" />
-      </radialGradient>
       <linearGradient id="hv-roof" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" class="roof-a" />
         <stop offset="100%" class="roof-b" />
       </linearGradient>
-      <mask id="hv-moon">
-        <rect width={VW} height={VH} fill="white" />
-        <circle cx="60" cy="42" r="15" fill="black" />
-      </mask>
     </defs>
 
     {#if night}
@@ -72,14 +64,9 @@
         {#each [[20, 22], [104, 16], [130, 52], [300, 24], [340, 60], [16, 90]] as [x, y], i (i)}
           <circle cx={x} cy={y} r={i % 2 ? 1.2 : 1.8} class="star" style="animation-delay:{i * 0.41}s" />
         {/each}
-        <circle cx="52" cy="48" r="16" class="moon" mask="url(#hv-moon)" />
-      </g>
-    {:else}
-      <g transition:fade={{ duration: 600 }}>
-        <circle cx="52" cy="48" r="40" fill="url(#hv-sun)" class="halo" />
-        <circle cx="52" cy="48" r="16" class="sun" />
       </g>
     {/if}
+    <SolarSun cx={52} cy={46} id="hv-sun" labelGap={16} />
 
     <path d="M0 296 Q 90 284 180 294 T {VW} 292 V{VH} H0Z" class="ground" />
     <g class="tree">
@@ -133,9 +120,6 @@
   .house.night { background: linear-gradient(180deg, color-mix(in srgb, #1e1b4b 70%, var(--surface)) 0%, color-mix(in srgb, #312e81 30%, var(--surface)) 80%); }
   svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: -2; pointer-events: none; }
 
-  .sun { fill: #fbbf24; filter: drop-shadow(0 0 8px #fbbf24); }
-  .halo { animation: breathe 5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
-  .moon { fill: #fef3c7; filter: drop-shadow(0 0 8px rgba(254, 243, 199, 0.6)); }
   .star { fill: #fef9c3; animation: twinkle 6s ease-in-out infinite; }
 
   .ground { fill: color-mix(in srgb, #22c55e 28%, var(--surface-solid)); }
@@ -179,6 +163,6 @@
   @keyframes twinkle { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
   @keyframes smoke { 0% { opacity: 0; transform: translate(0, 0) scale(0.6); } 20% { opacity: 0.8; } 100% { opacity: 0; transform: translate(10px, -28px) scale(1.8); } }
   @media (prefers-reduced-motion: reduce) {
-    .room.lit .glow, .halo, .star, .smoke circle { animation: none; }
+    .room.lit .glow, .star, .smoke circle { animation: none; }
   }
 </style>

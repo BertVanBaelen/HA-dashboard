@@ -147,24 +147,19 @@
         onmute={() => scene(MEDIA.soundbarMute)}
       />
       <div class="sbrow">
-        <Tile
-          label="Soundbar"
-          sub={soundbarState ? (isOn(soundbarState) ? 'Aan' : 'Uit') : 'Aan/uit'}
-          iconPath={mdiPower}
-          color="#22c55e"
-          active={isOn(soundbarState)}
-          busy={busy === 'sb:power'}
-          disabled={!has(MEDIA.soundbarPower)}
+        <button
+          class="btn ghost sm"
+          class:on={isOn(soundbarState)}
+          title="Soundbar aan/uit"
+          disabled={!has(MEDIA.soundbarPower) || busy === 'sb:power'}
           onclick={() => run('sb:power', () => callService('scene', 'turn_on', {}, MEDIA.soundbarPower))}
-        />
-        <Tile
-          label="Ingang"
-          sub="Wisselen"
-          iconPath={mdiSwapHorizontal}
-          busy={busy === 'sb:input'}
-          disabled={!has(MEDIA.soundbarInput)}
+        ><Icon path={mdiPower} size={15} />Aan/uit</button>
+        <button
+          class="btn ghost sm"
+          title="Soundbar-ingang wisselen"
+          disabled={!has(MEDIA.soundbarInput) || busy === 'sb:input'}
           onclick={() => run('sb:input', () => callService('scene', 'turn_on', {}, MEDIA.soundbarInput, 'Soundbar-ingang gewisseld'))}
-        />
+        ><Icon path={mdiSwapHorizontal} size={15} />Ingang</button>
       </div>
     </div>
   </Card>
@@ -264,7 +259,9 @@
   .pp:disabled { opacity: 0.5; }
   .pp.playing { --pulse: var(--accent); }
   .volwrap { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-  .sbrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .sbrow { display: flex; justify-content: center; gap: 6px; }
+  .sbrow .btn { gap: 5px; padding: 4px 10px; font-size: 0.78rem; color: var(--text-2); }
+  .sbrow .btn.on { color: #22c55e; }
   .sleepwarn + .volwrap { padding-top: 0; }
   .sleepwarn { margin-top: 14px; }
   .sources { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
