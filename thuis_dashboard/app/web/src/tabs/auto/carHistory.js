@@ -133,10 +133,83 @@ function stateIntervals(pts, on, end, cap = 12 * H) {
 }
 
 /**
+ * @typedef {[number, number, number]} GeoPt  [time, lat, lon]
+ * @typedef {[number, number]} LatLon
+ * @typedef {{ id:string, name:string, lat:number, lon:number, radius:number, home:boolean }} Zone
  * @typedef {{ mileage:NPt[], speed:NPt[], soc:NPt[], powerMode:Pt[], poweredOn:Pt[], poweredOff:Pt[], batteryEnergy:NPt[],
- *   tripEff:NPt[], chargingPower:NPt[], chargingSwitch:Pt[], chargingStatus:Pt[], lastChargeEnergy:NPt[], start:number, end:number,
- *   capacity:number, effUnit:string, powerUnit:string }} CarHistory
+ *   tripEff:NPt[], chargingPower:NPt[], chargingSwitch:Pt[], chargingStatus:Pt[], lastChargeEnergy:NPt[], track:GeoPt[], zones:Zone[],
+ *   start:number, end:number, capacity:number, effUnit:string, powerUnit:string }} CarHistory
  */
+
+/** GPS positions of the car tracker (needs attributes, so it is a separate request). @returns {Promise<GeoPt[]>} */
+async function fetchTrack(start, end) {
+  const id = CAR_ENTITIES.location;
+  if (!id || !get(states)[id]) return [];
+  const raw =
+    (await haRequest({
+      type: 'history/history_during_period',
+      start_time: new Date(start).toISOString(),
+      end_time: new Date(end).toISOString(),
+      entity_ids: [id],
+      minimal_response: false,
+      no_attributes: false,
+      significant_changes_only: false,
+    })) ?? {};
+  /** @type {GeoPt[]} */
+  const out = [];
+  for (const e of raw[id] ?? []) {
+    const a = e.a ?? e.attributes ?? {};
+    const lat = Number(a.latitude);
+    const lon = Number(a.longitude);
+    const t = toMs(e.lu ?? e.lc ?? e.last_updated ?? e.last_changed);
+    if (!Number.isFinite(t) || !Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) continue;
+    const prev = out[out.length - 1];
+    if (prev && prev[1] === lat && prev[2] === lon) continue;
+    out.push([t, lat, lon]);
+  }
+  return out.sort((x, y) => x[0] - y[0]);
+}
+
+/** HA zones (home first). @returns {Zone[]} */
+export function getZones() {
+  const st = get(states);
+  return Object.values(st)
+    .filter((s) => s.entity_id.startsWith('zone.') && Number.isFinite(Number(s.attributes?.latitude)))
+    .map((s) => ({
+      id: s.entity_id,
+      home: s.entity_id === 'zone.home',
+      name: s.entity_id === 'zone.home' ? 'Thuis' : (s.attributes.friendly_name ?? s.entity_id.slice(5)),
+      lat: Number(s.attributes.latitude),
+      lon: Number(s.attributes.longitude),
+      radius: Number(s.attributes.radius) || 100,
+    }))
+    .sort((a, b) => Number(b.home) - Number(a.home));
+}
+
+/** Distance in km between two coordinates. @param {LatLon} a @param {LatLon} b */
+export function distKm(a, b) {
+  const r = Math.PI / 180;
+  const dLat = (b[0] - a[0]) * r;
+  const dLon = (b[1] - a[1]) * r;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLon / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(s));
+}
+
+/** Zone that contains a position (with a little slack for GPS noise). @param {LatLon|null} p @param {Zone[]} zones */
+export function zoneAt(p, zones) {
+  if (!p) return null;
+  return zones.find((z) => distKm(p, [z.lat, z.lon]) * 1000 <= z.radius + 75) ?? null;
+}
+
+/** Last GPS position at or before t. @param {GeoPt[]} track @returns {LatLon|null} */
+function posAt(track, t) {
+  let p = null;
+  for (const g of track) {
+    if (g[0] > t) break;
+    p = g;
+  }
+  return p ? [p[1], p[2]] : null;
+}
 
 /** @type {{ at:number, p: Promise<CarHistory> } | null} */
 let cache = null;
@@ -166,6 +239,7 @@ async function fetchHistory() {
         significant_changes_only: false,
       })) ?? {})
     : {};
+  const track = await fetchTrack(start, end).catch(() => []);
   const p = (/** @type {string} */ id) => parse(raw[id]);
   const cap = Number(st[IDS.capacity]?.state);
   const powerUnit = st[IDS.chargingPower]?.attributes?.unit_of_measurement ?? 'kW';
@@ -184,6 +258,8 @@ async function fetchHistory() {
     chargingSwitch: p(IDS.chargingSwitch),
     chargingStatus: p(IDS.chargingStatus),
     lastChargeEnergy: scale(nums(p(IDS.lastChargeEnergy)), kwh(IDS.lastChargeEnergy)),
+    track,
+    zones: getZones(),
     start,
     end,
     capacity: Number.isFinite(cap) && cap > 10 ? cap : CAR_BATTERY_KWH,
@@ -194,7 +270,7 @@ async function fetchHistory() {
 
 /**
  * @typedef {{ start:number, end:number, km:number, kwh:number|null, socBefore:number|null, socAfter:number|null,
- *   maxSpeed:number|null, avgSpeed:number|null, kwh100:number|null }} Ride
+ *   maxSpeed:number|null, avgSpeed:number|null, kwh100:number|null, from:LatLon|null, to:LatLon|null, path:LatLon[] }} Ride
  */
 
 const OFF_MODES = new Set(['off', 'unavailable', 'unknown', '', 'none', 'standby', '0', 'false']);
@@ -263,14 +339,21 @@ export function detectRides(h) {
     if (moving.length >= 3 && (avgSpeed == null || (maxSpeed != null && avgSpeed > maxSpeed))) {
       avgSpeed = moving.reduce((s, [, v]) => s + v, 0) / moving.length;
     }
-    rides.push({ start: a, end: b, km, kwh, socBefore, socAfter, maxSpeed, avgSpeed, kwh100: kwh != null ? (kwh / km) * 100 : null });
+    const first = h.track.find((g) => g[0] >= a && g[0] <= bound);
+    const from = posAt(h.track, a) ?? (first ? /** @type {LatLon} */ ([first[1], first[2]]) : null);
+    const to = posAt(h.track, bound);
+    /** @type {LatLon[]} */
+    const path = [];
+    if (from) path.push(from);
+    for (const g of h.track) if (g[0] > a && g[0] <= bound) path.push([g[1], g[2]]);
+    rides.push({ start: a, end: b, km, kwh, socBefore, socAfter, maxSpeed, avgSpeed, kwh100: kwh != null ? (kwh / km) * 100 : null, from, to, path });
   }
   return rides.reverse();
 }
 
 /**
  * @typedef {{ start:number, end:number, kwh:number|null, source:'auto'|'vermogen'|'soc'|null, maxKw:number|null, avgKw:number|null,
- *   socBefore:number|null, socAfter:number|null, dc:boolean, price:number, cost:number|null }} Charge
+ *   socBefore:number|null, socAfter:number|null, dc:boolean, price:number, cost:number|null, pos:LatLon|null }} Charge
  */
 
 const CHARGING_STATUS = /^(charging|charge|in_progress|fast_charging|laden)/i;
@@ -326,12 +409,23 @@ export function detectCharges(h) {
     if (kwh == null && maxKw == null) continue;
     const dc = maxKw != null && maxKw > CAR_CHARGE_PRICES.dcThresholdKw;
     const price = dc ? CAR_CHARGE_PRICES.dcPerKwh : CAR_CHARGE_PRICES.acPerKwh;
-    out.push({ start: a, end: b, kwh, source, maxKw, avgKw, socBefore, socAfter, dc, price, cost: kwh != null ? kwh * price : null });
+    out.push({ start: a, end: b, kwh, source, maxKw, avgKw, socBefore, socAfter, dc, price, cost: kwh != null ? kwh * price : null, pos: posAt(h.track, b) ?? posAt(h.track, a) });
   }
   return out.reverse();
 }
 
 /** @param {number|null|undefined} v @param {number} [d] */
 export const fmt = (v, d = 1) => (v == null || !Number.isFinite(v) ? '—' : v.toLocaleString('nl-BE', { minimumFractionDigits: d, maximumFractionDigits: d }));
+
+/** "Vandaag", "Gisteren" or "dinsdag 3 juni". @param {number} t */
+export function dayLabel(t) {
+  const d = new Date(t);
+  const now = new Date();
+  const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const same = (/** @type {Date} */ a) => a.getFullYear() === d.getFullYear() && a.getMonth() === d.getMonth() && a.getDate() === d.getDate();
+  if (same(now)) return 'Vandaag';
+  if (same(y)) return 'Gisteren';
+  return d.toLocaleDateString('nl-BE', { weekday: 'long', day: 'numeric', month: 'long' });
+}
 /** @param {number} v */
 export const eur = (v) => v.toLocaleString('nl-BE', { style: 'currency', currency: 'EUR' });

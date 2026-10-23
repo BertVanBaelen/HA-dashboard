@@ -50,6 +50,44 @@ function mgHistory(id, start, end) {
   return pts;
 }
 
+/** Simulated GPS track of the MG4: home ⇄ Brussel commute, every 4th day a Leuven trip ending at a fast charger. */
+const MG_HOME = [51.1352, 4.341];
+const MG_WORK_ROUTE = [[51.1185, 4.3523], [51.087, 4.3667], [51.0436, 4.3389], [51.003, 4.3005], [50.9407, 4.3271], [50.8903, 4.3482], [50.8605, 4.3615]];
+const MG_LEUVEN = [[50.8696, 4.4012], [50.8846, 4.4712], [50.8822, 4.6189], [50.8798, 4.7005], [50.8752, 4.6005], [50.8869, 4.4683]];
+function mgTrack(start, end) {
+  const step = 120e3;
+  const pts = [];
+  let pos = MG_HOME;
+  let route = null, routeStart = 0, routeLen = 0;
+  const lerp = (path, f) => {
+    const seg = [];
+    let tot = 0;
+    for (let i = 1; i < path.length; i++) { const d = Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); seg.push(d); tot += d; }
+    let goal = f * tot;
+    for (let i = 0; i < seg.length; i++) {
+      if (goal <= seg[i]) { const k = seg[i] ? goal / seg[i] : 0; return [path[i][0] + (path[i + 1][0] - path[i][0]) * k, path[i][1] + (path[i + 1][1] - path[i][1]) * k]; }
+      goal -= seg[i];
+    }
+    return path[path.length - 1];
+  };
+  const push = (t, p, home) => pts.push({ s: home ? 'home' : 'not_home', a: { latitude: +p[0].toFixed(5), longitude: +p[1].toFixed(5), gps_accuracy: 8, source_type: 'gps', friendly_name: 'MG4 GPS' }, lu: t / 1000 });
+  for (let t = Math.floor(start / step) * step; t <= end; t += step) {
+    const d = new Date(t);
+    const h = d.getHours() + d.getMinutes() / 60;
+    const day = Math.floor(t / 86400e3);
+    const trips = [[7.75, 0.6, MG_WORK_ROUTE], [17.2, 0.65, [...MG_WORK_ROUTE].reverse().slice(1).concat([MG_HOME])], ...(day % 4 === 0 ? [[12, 1.5, MG_LEUVEN]] : [])];
+    const trip = trips.find(([s, len]) => h >= s && h < s + len);
+    if (trip && !route) { route = [pos, ...trip[2]]; routeStart = trip[0]; routeLen = trip[1]; }
+    if (route) {
+      const f = Math.min(1, (h - routeStart) / routeLen);
+      const p = trip ? lerp(route, f) : route[route.length - 1];
+      push(t, p, false);
+      if (!trip) { pos = p; route = null; if (Math.hypot(p[0] - MG_HOME[0], p[1] - MG_HOME[1]) < 0.002) push(t + 1000, p, true); }
+    } else if (!pts.length) push(t, pos, true);
+  }
+  return pts;
+}
+
 /** Entity list: a JSON array or a plain list with one entity id per line (optionally "- " prefixed). */
 function parseEntityList(text) {
   try {
@@ -511,6 +549,7 @@ export class MockHaClient extends EventEmitter {
       const end = msg.end_time ? new Date(msg.end_time).getTime() : Date.now();
       const out = {};
       for (const id of msg.entity_ids) {
+        if (id === 'device_tracker.mg_mg4_electric_gps_location') { out[id] = mgTrack(start, end); continue; }
         const car = mgHistory(id, start, end);
         if (car) { out[id] = car; continue; }
         const pts = [];

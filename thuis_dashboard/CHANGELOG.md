@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.1
+- Auto → **Ritten** in een nieuw jasje: overzicht van de laatste 10 dagen met km per dag, kaart met alle gereden
+  routes en per rit een kaartje met de route, vertrek- en aankomstplaats, verbruik (groen/oranje/rood) en een
+  batterijbalk. Tik op een rit om de route groot te bekijken.
+- Auto → **Kosten**: totaal met verdeling thuis/AC vs. snelladen/DC, kosten per dag, en per laadbeurt een kaart
+  met icoon, batterijbalk en (buiten thuis) de laadlocatie op de kaart.
+- Routes en locaties komen van de GPS-tracker van de auto; plaatsnamen via OpenStreetMap (lokaal gecachet).
+
 ## 0.6.0
 - Nieuw tabblad **Nieuws** met VRT NWS, NOS, BBC News, Sporza en Tweakers. Eén bericht per kaart: veeg opzij om
   het weg te doen (met "Ongedaan maken"), scroll om het volledige artikel te lezen. Berichten zonder volledige
