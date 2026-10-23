@@ -7,6 +7,7 @@ export const tabLoaders = {
   media: () => import('./Media.svelte'),
   auto: () => import('./Auto.svelte'),
   agenda: () => import('./Agenda.svelte'),
+  nieuws: () => import('./Nieuws.svelte'),
   personen: () => import('./Personen.svelte'),
   systeem: () => import('./Systeem.svelte'),
   grafieken: () => import('./Grafieken.svelte'),

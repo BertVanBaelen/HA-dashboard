@@ -8,6 +8,7 @@
   import Row from './Row.svelte';
   import CalendarColorRow from './CalendarColorRow.svelte';
   import { spotifyAccounts, findSpotify } from '../tabs/media/spotify.js';
+  import NewsSources from '../tabs/nieuws/NewsSources.svelte';
 
   const calendars = $derived(Object.values($states).filter((s) => s.entity_id.startsWith('calendar.')).sort((a, b) => name(a).localeCompare(name(b))));
   const tabs = $derived($prefs.tabs.map((t) => ({ ...t, meta: TABS.find((x) => x.id === t.id) })).filter((t) => t.meta));
@@ -144,6 +145,11 @@
     <p class="tiny faint" style="margin:0">Je bibliotheek, afspeellijsten en Liked Songs op de Spotify-kaart komen van dit account. Een extra account voeg je toe door SpotifyPlus nog eens toe te voegen in Home Assistant.</p>
   </div>
 {/if}
+
+<h4 class="section-title">Nieuws</h4>
+<div class="group">
+  <NewsSources />
+</div>
 
 <h4 class="section-title">Thuiskomst</h4>
 <div class="group col">

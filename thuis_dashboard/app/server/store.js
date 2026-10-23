@@ -1,8 +1,10 @@
 import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { TABS, DEFAULT_PRESETS, DEFAULT_COMFORT, DEFAULT_RADIOS, CAR_FLAGS, DOOR_SENSORS } from '../shared/config.js';
+import { TABS, DEFAULT_PRESETS, DEFAULT_COMFORT, DEFAULT_RADIOS, CAR_FLAGS, DOOR_SENSORS, NEWS_SOURCES } from '../shared/config.js';
 
 const SCHEMA_VERSION = 1;
+const NEWS_DISMISS_DAYS = 4;
+const NEWS_DISMISS_MAX = 3000;
 
 export function defaultUserPrefs() {
   return {
@@ -16,6 +18,8 @@ export function defaultUserPrefs() {
     spotifyEntity: null,
     spotifyDevice: null,
     theme: { mode: 'auto', accent: 'blauw' },
+    // sources: source id -> 'alles' | 'groot' | 'uit'; dismissed: news item id -> unix seconds when swiped away
+    news: { sources: Object.fromEntries(NEWS_SOURCES.map((s) => [s.id, s.mode])), dismissed: {} },
   };
 }
 
@@ -32,11 +36,25 @@ export function defaultHousehold() {
   };
 }
 
+/** Valid source modes only, and forget swiped-away news after a few days so the file stays small. */
+function normalizeNews(n, d) {
+  const modes = new Set(['alles', 'groot', 'uit']);
+  const sources = { ...d.sources };
+  for (const [id, m] of Object.entries(n?.sources ?? {})) if (id in sources && modes.has(m)) sources[id] = m;
+  const minTs = Date.now() / 1000 - NEWS_DISMISS_DAYS * 86400;
+  const dismissed = Object.entries(n?.dismissed ?? {})
+    .filter(([id, ts]) => typeof id === 'string' && id.length <= 24 && Number(ts) > minTs)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, NEWS_DISMISS_MAX);
+  return { sources, dismissed: Object.fromEntries(dismissed.map(([id, ts]) => [id, Math.round(Number(ts))])) };
+}
+
 /** Fill in missing keys and append newly added tabs so old files stay valid. */
 function normalizeUser(p) {
   const d = defaultUserPrefs();
   const out = { ...d, ...p, welcome: { ...d.welcome, ...(p?.welcome ?? {}) }, theme: { ...d.theme, ...(p?.theme ?? {}) } };
   out.welcome.stereo = { ...d.welcome.stereo, ...(p?.welcome?.stereo ?? {}) };
+  out.news = normalizeNews(p?.news, d.news);
   const known = new Set(TABS.map((t) => t.id));
   const tabs = (p?.tabs ?? []).filter((t) => known.has(t.id));
   for (const t of TABS) if (!tabs.find((x) => x.id === t.id)) tabs.push({ id: t.id, visible: true });

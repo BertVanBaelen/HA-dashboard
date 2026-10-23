@@ -1,6 +1,6 @@
 {
   "name": "thuis-dashboard",
-  "version": "0.5.5",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,6 +11,8 @@
     "mock": "node server/index.js --mock"
   },
   "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "linkedom": "^0.18.14",
     "ws": "^8.22.0"
   },
   "devDependencies": {

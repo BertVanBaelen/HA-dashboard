@@ -7,6 +7,7 @@ import { HaClient } from './ha.js';
 import { MockHaClient, MOCK_USERS } from './mock.js';
 import { Store } from './store.js';
 import { Actions } from './actions.js';
+import { News } from './news.js';
 import { ALLOWED_SERVICES, ALLOWED_WS_COMMANDS, EXCLUDED_ENTITY_PATTERNS, START_DASHBOARD } from '../shared/config.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -33,6 +34,7 @@ const ha = MOCK
     });
 const store = new Store(DATA_FILE, log);
 const actions = new Actions({ ha, store, log });
+const news = new News({ log });
 
 // ---- Static files ----------------------------------------------------------
 
@@ -206,6 +208,7 @@ async function runAction(client, name, args) {
     case 'heatRoom': return actions.heatRoom(args.room);
     case 'browseStereo': return actions.browseStereo(args.mediaId, args.mediaType);
     case 'spotify': return actions.spotifyFor(client.user.id).run(args.op, args);
+    case 'news': return news.run(args.op, args, store.getUser(client.user.id));
     case 'setupStartDashboard': return setupStartDashboard();
     case 'testArrival': {
       const person = actions.personForUser(client.user.id);

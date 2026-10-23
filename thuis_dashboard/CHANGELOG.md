@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0
+- Nieuw tabblad **Nieuws** met VRT NWS, NOS, BBC News, Sporza en Tweakers. Eén bericht per kaart: veeg opzij om
+  het weg te doen (met "Ongedaan maken"), scroll om het volledige artikel te lezen. Berichten zonder volledige
+  tekst (Tweakers, video's) tonen enkel de samenvatting en een knop naar de site.
+- Per bron kies je **Alles**, **Belangrijk** (enkel de grote verhalen van de dag) of **Uit**. Standaard: Sporza en
+  Tweakers op Belangrijk. Hetzelfde verhaal bij meerdere bronnen verschijnt maar één keer.
+- Weggeveegde berichten worden per gebruiker onthouden, ook over toestellen heen.
+
 ## 0.5.5
 - Buienradar: nu een kaart met tijdslider (laatste 2 uur, afspelen/pauze) en een marker op jouw locatie
   (of thuis als je locatie onbekend is). Bron: RainViewer.

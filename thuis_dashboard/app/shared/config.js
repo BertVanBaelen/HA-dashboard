@@ -310,10 +310,43 @@ export const TABS = [
   { id: 'media', label: 'Media', icon: 'television' },
   { id: 'auto', label: 'Auto', icon: 'car' },
   { id: 'agenda', label: 'Agenda & Lijsten', short: 'Agenda', icon: 'calendar' },
+  { id: 'nieuws', label: 'Nieuws', icon: 'newspaper' },
   { id: 'personen', label: 'Personen', icon: 'account' },
   { id: 'systeem', label: 'Systeem', icon: 'cog' },
   { id: 'grafieken', label: 'Grafieken', icon: 'chart' },
 ];
+
+// News feeds. mode = default per user: 'alles' (every item), 'groot' (only big stories), 'uit'.
+// body: how the full article is obtained – 'vrt' (per-article Atom feed), 'feed' (full text in the feed),
+// 'page' (article page + Readability) or 'none' (summary only, e.g. behind a consent wall).
+// weight = hours of "freshness bonus" when ordering the deck; perDay = max big stories per day.
+export const NEWS_SOURCES = [
+  { id: 'vrt', name: 'VRT NWS', color: '#f97316', feed: 'https://www.vrt.be/vrtnws/nl.rss.articles.xml', body: 'vrt', mode: 'alles', weight: 3, perDay: 6 },
+  { id: 'nos', name: 'NOS', color: '#e11d48', feed: 'https://feeds.nos.nl/nosnieuwsalgemeen', body: 'feed', mode: 'alles', weight: 0, perDay: 4 },
+  { id: 'bbc', name: 'BBC News', color: '#64748b', feed: 'https://feeds.bbci.co.uk/news/rss.xml', body: 'page', mode: 'alles', weight: 0, perDay: 4 },
+  { id: 'sporza', name: 'Sporza', color: '#16a34a', feed: 'https://sporza.be/nl.rss.xml', body: 'page', mode: 'groot', weight: 0, perDay: 3 },
+  { id: 'tweakers', name: 'Tweakers', color: '#0ea5e9', feed: 'https://tweakers.net/feeds/nieuws.xml', body: 'none', mode: 'groot', weight: 0, perDay: 2,
+    note: 'Tweakers laat het volledige artikel enkel op hun eigen site lezen.' },
+];
+
+export const NEWS_MODES = [
+  { value: 'alles', label: 'Alles' },
+  { value: 'groot', label: 'Belangrijk' },
+  { value: 'uit', label: 'Uit' },
+];
+
+// Words that make a story "big" in 'groot' mode (besides being covered by the other sources too).
+export const NEWS_BIG_KEYWORDS = {
+  sporza: [
+    'Rode Duivels', 'Red Flames', 'Red Lions', 'Belgian Cats', 'wereldkampioen', 'Europees kampioen', 'Belgisch kampioen',
+    'wereldrecord', 'olympisch', 'Olympische', 'goud', 'landstitel', 'bekerfinale', 'Tour de France', 'Ronde van Frankrijk',
+    'Ronde van Vlaanderen', 'Parijs-Roubaix', 'Evenepoel', 'Van Aert', 'Van der Poel', 'Thiam', 'WK', 'EK',
+  ],
+  tweakers: [
+    'België', 'Belgische', 'Belgen', 'Vlaamse', 'Vlaanderen', 'Proximus', 'Telenet', 'itsme', 'storing', 'datalek', 'hack',
+    'gehackt', 'cyberaanval', 'ransomware', 'kwetsbaarheid', 'Europese Commissie',
+  ],
+};
 
 // Lovelace dashboard that redirects to this app (so it can be the HA default dashboard)
 export const START_DASHBOARD = {

@@ -103,6 +103,26 @@ Instellingen → **Spotify** zijn eigen account, of wisselt bovenaan de Spotify-
 account tegelijk op de stereo: wie iets start, neemt de stereo over. Stel de Spotify Connect
 gebruikersnaam/wachtwoord (stap 4) in voor elk account.
 
+## Nieuws
+
+Het tabblad **Nieuws** toont één bericht per kaart. Veeg een kaart opzij (of tik op ✕) om ze weg te doen;
+scroll naar beneden om het volledige artikel te lezen. Weggeveegde berichten worden per gebruiker
+onthouden (4 dagen) en zijn ook op je andere toestellen weg.
+
+| Bron | Standaard | Volledig artikel |
+|---|---|---|
+| VRT NWS | Alles | ja |
+| NOS | Alles | ja |
+| BBC News | Alles | ja (behalve video/live) |
+| Sporza | Belangrijk | ja |
+| Tweakers | Belangrijk | nee, enkel samenvatting (toestemmingsmuur) |
+
+Per bron kies je **Alles**, **Belangrijk** of **Uit** (knop rechtsboven in het tabblad of Instellingen →
+**Nieuws**). "Belangrijk" toont per dag enkel de grootste verhalen: onderwerpen die ook andere bronnen
+brengen, of met sleutelwoorden (`NEWS_BIG_KEYWORDS` in `shared/config.js`). Hetzelfde verhaal bij meerdere
+bronnen wordt maar één keer getoond, bij voorkeur van VRT NWS. De add-on haalt de feeds zelf op (elke
+10 minuten) en heeft dus internettoegang nodig.
+
 ## Lokaal ontwikkelen
 
 ```powershell
