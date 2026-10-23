@@ -146,6 +146,26 @@
         onup={() => scene(MEDIA.soundbarVolumeUp)}
         onmute={() => scene(MEDIA.soundbarMute)}
       />
+      <div class="sbrow">
+        <Tile
+          label="Soundbar"
+          sub={soundbarState ? (isOn(soundbarState) ? 'Aan' : 'Uit') : 'Aan/uit'}
+          iconPath={mdiPower}
+          color="#22c55e"
+          active={isOn(soundbarState)}
+          busy={busy === 'sb:power'}
+          disabled={!has(MEDIA.soundbarPower)}
+          onclick={() => run('sb:power', () => callService('scene', 'turn_on', {}, MEDIA.soundbarPower))}
+        />
+        <Tile
+          label="Ingang"
+          sub="Wisselen"
+          iconPath={mdiSwapHorizontal}
+          busy={busy === 'sb:input'}
+          disabled={!has(MEDIA.soundbarInput)}
+          onclick={() => run('sb:input', () => callService('scene', 'turn_on', {}, MEDIA.soundbarInput, 'Soundbar-ingang gewisseld'))}
+        />
+      </div>
     </div>
   </Card>
 
@@ -191,31 +211,13 @@
       <span class="advic"><Icon path={mdiTune} size={20} /></span>
       <span class="grow">
         <b>Geavanceerd</b>
-        <span class="small muted">Soundbar & sleep timer</span>
+        <span class="small muted">Soundbar-AUX & sleep timer</span>
       </span>
       <Icon name="chevronDown" class="chev" />
     </button>
     {#if advanced}
       <div class="adv" transition:slide={{ duration: 320 }}>
         <div class="grid-3">
-          <Tile
-            label="Soundbar"
-            sub={soundbarState ? (isOn(soundbarState) ? 'Aan' : 'Uit') : 'Aan/uit'}
-            iconPath={mdiPower}
-            color="#22c55e"
-            active={isOn(soundbarState)}
-            busy={busy === 'sb:power'}
-            disabled={!has(MEDIA.soundbarPower)}
-            onclick={() => run('sb:power', () => callService('scene', 'turn_on', {}, MEDIA.soundbarPower))}
-          />
-          <Tile
-            label="Ingang"
-            sub="Wisselen"
-            iconPath={mdiSwapHorizontal}
-            busy={busy === 'sb:input'}
-            disabled={!has(MEDIA.soundbarInput)}
-            onclick={() => run('sb:input', () => callService('scene', 'turn_on', {}, MEDIA.soundbarInput, 'Soundbar-ingang gewisseld'))}
-          />
           <Tile
             label="AUX"
             sub="Soundbar"
@@ -261,7 +263,8 @@
   .pp:active { transform: scale(0.9); }
   .pp:disabled { opacity: 0.5; }
   .pp.playing { --pulse: var(--accent); }
-  .volwrap { padding: 16px; }
+  .volwrap { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .sbrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .sleepwarn + .volwrap { padding-top: 0; }
   .sleepwarn { margin-top: 14px; }
   .sources { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }

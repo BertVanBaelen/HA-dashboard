@@ -10,7 +10,6 @@
   import Card from '../../components/Card.svelte';
   import Icon from '../../components/Icon.svelte';
   import Chip from '../../components/Chip.svelte';
-  import Slider from '../../components/Slider.svelte';
   import EmptyState from '../../components/EmptyState.svelte';
   import SpotifyTrackRow from './SpotifyTrackRow.svelte';
   import SpotifyTile from './SpotifyTile.svelte';
@@ -331,18 +330,6 @@
       </div>
 
       <div class="row vol">
-        <span class="grow">
-          <Slider
-            value={Math.round((Number(a.volume_level) || 0) * 100)}
-            min={0}
-            max={100}
-            step={1}
-            label="Spotify-volume"
-            format={(/** @type {number} */ v) => `${v}%`}
-            color={SPOTIFY_GREEN}
-            onchange={(/** @type {number} */ v) => sp('control', { cmd: 'volume', value: v / 100 }).catch(() => {})}
-          />
-        </span>
         <button class="btn soft sm" disabled={na} onclick={() => (queueOpen = true)}><Icon path={mdiPlaylistMusic} size={18} />Wachtrij</button>
       </div>
     </div>
@@ -465,7 +452,7 @@
     box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.6); transition: transform 0.25s var(--spring); }
   .pp:active { transform: scale(0.9); }
   .pp:disabled { opacity: 0.6; }
-  .vol { gap: 10px; align-items: center; }
+  .vol { gap: 10px; align-items: center; justify-content: flex-end; }
   .vol .btn { gap: 6px; }
 
   .browse { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); padding-top: 14px; }

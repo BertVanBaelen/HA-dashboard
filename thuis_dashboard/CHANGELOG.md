@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.4
+- Spotify: de volumeslider is weg; gebruik de volumeknoppen van de soundbar.
+- Stereo: **Soundbar aan/uit** en **Ingang wisselen** staan nu meteen onder de soundbar-volumeknoppen (niet meer
+  verstopt onder Geavanceerd).
+
 ## 0.5.3
 - Spotify: afspeellijsten van iemand anders tonen geen "Forbidden"-fout meer. Spotify laat apps sinds 2026 alleen
   de nummers van je eigen afspeellijsten zien; de kaart zegt dat nu duidelijk en Afspelen/Shuffle werkt gewoon.
