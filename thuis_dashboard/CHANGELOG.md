@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.2
+- Soundbar (Media-tab en plattegrond): aan/uit, volume en ingang lopen nu via scripts
+  (`script.sounbar_power`, `script.soundbar_volume_up/down`, `script.soundbar_input_toggle`) in plaats van scenes.
+  Dempen doet voorlopig niets tot er een mute-script is.
+- LED-strip keuken gebruikt de nieuwe entiteit `light.0x00124b001f69cb9d`.
+- Systeem: de Zigbee/ZHA-kaart, de Zigbee-status bovenaan en de bijhorende serverrechten zijn verwijderd.
+
 ## 0.6.1
 - Auto → **Ritten** in een nieuw jasje: overzicht van de laatste 10 dagen met km per dag, kaart met alle gereden
   routes en per rit een kaartje met de route, vertrek- en aankomstplaats, verbruik (groen/oranje/rood) en een
