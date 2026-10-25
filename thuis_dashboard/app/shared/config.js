@@ -94,7 +94,7 @@ export const DOOR_SENSORS = [
 
 export const LIGHTS = [
   { entity: 'light.uplighter_floor_lamp', name: 'Uplighter', room: 'Slaapkamer', sceneSelect: 'select.uplighter_floor_lamp_scene' },
-  { entity: 'light.led_strip_keuken', name: 'LED-strip keuken', room: 'Living', sceneSelect: null },
+  { entity: 'light.0x00124b001f69cb9d', name: 'LED-strip keuken', room: 'Living', sceneSelect: null },
 ];
 
 export const MEDIA = {
@@ -109,11 +109,11 @@ export const MEDIA = {
   stereoActive: 'input_boolean.stereo_actief',
   stereoSleepTimer: 'select.living_room_stereo_sleep_timer',
   soundbarOn: 'input_boolean.soundbar_aan',
-  soundbarPower: 'scene.soundbar_power',
-  soundbarVolumeUp: 'scene.soundbar_volume_up',
-  soundbarVolumeDown: 'scene.soundbar_volume_down',
-  soundbarMute: 'scene.soundbar_mute',
-  soundbarInput: 'scene.soundbar_input_toggle',
+  soundbarPower: 'script.sounbar_power',
+  soundbarVolumeUp: 'script.soundbar_volume_up',
+  soundbarVolumeDown: 'script.soundbar_volume_down',
+  soundbarMute: null, // no mute script yet
+  soundbarInput: 'script.soundbar_input_toggle',
   soundbarAux: 'script.soundbar_aux',
   // Scripts the user must provide in HA (see DOCS.md)
   scripts: {
@@ -293,7 +293,7 @@ export const FLOORPLAN_ROOMS = [
     id: 'living', name: 'Living', icon: 'sofa', rect: [96, 272, 198, 242],
     climate: 'living',
     openings: ['binary_sensor.myggbett_door_window_sensor_door'],
-    lights: ['light.led_strip_keuken'],
+    lights: ['light.0x00124b001f69cb9d'],
     media: [
       { kind: 'tv', label: 'TV / Chromecast' },
       { kind: 'stereo', label: 'Stereo' },
@@ -410,28 +410,28 @@ export const DEFAULT_PRESETS = [
     id: 'avond', name: 'Avond', icon: 'weatherSunset',
     lights: {
       'light.uplighter_floor_lamp': { on: true, brightness: 40, rgb: [255, 140, 60] },
-      'light.led_strip_keuken': { on: true, brightness: 30, rgb: [255, 140, 60] },
+      'light.0x00124b001f69cb9d': { on: true, brightness: 30, rgb: [255, 140, 60] },
     },
   },
   {
     id: 'lezen', name: 'Lezen', icon: 'book',
     lights: {
       'light.uplighter_floor_lamp': { on: true, brightness: 70, colorTemp: 4000 },
-      'light.led_strip_keuken': { on: false },
+      'light.0x00124b001f69cb9d': { on: false },
     },
   },
   {
     id: 'nacht', name: 'Nacht', icon: 'weatherNight',
     lights: {
       'light.uplighter_floor_lamp': { on: true, brightness: 5, colorTemp: 2200 },
-      'light.led_strip_keuken': { on: false },
+      'light.0x00124b001f69cb9d': { on: false },
     },
   },
   {
     id: 'uit', name: 'Uit', icon: 'power',
     lights: {
       'light.uplighter_floor_lamp': { on: false },
-      'light.led_strip_keuken': { on: false },
+      'light.0x00124b001f69cb9d': { on: false },
     },
   },
 ];

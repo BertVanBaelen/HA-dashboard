@@ -90,7 +90,7 @@
       lastRadio = null;
     });
 
-  const scene = (/** @type {string} */ id) => callService('scene', 'turn_on', {}, id).catch(() => {});
+  const script = (/** @type {string|null} */ id) => (id ? callService('script', 'turn_on', {}, id).catch(() => {}) : undefined);
 
   const soundbarState = $derived($states[MEDIA.soundbarOn]);
   const sleep = $derived($states[MEDIA.stereoSleepTimer]);
@@ -142,9 +142,9 @@
         label="Soundbar (IR)"
         interval={450}
         disabled={!has(MEDIA.soundbarVolumeUp)}
-        ondown={() => scene(MEDIA.soundbarVolumeDown)}
-        onup={() => scene(MEDIA.soundbarVolumeUp)}
-        onmute={() => scene(MEDIA.soundbarMute)}
+        ondown={() => script(MEDIA.soundbarVolumeDown)}
+        onup={() => script(MEDIA.soundbarVolumeUp)}
+        onmute={() => script(MEDIA.soundbarMute)}
       />
       <div class="sbrow">
         <button
@@ -152,13 +152,13 @@
           class:on={isOn(soundbarState)}
           title="Soundbar aan/uit"
           disabled={!has(MEDIA.soundbarPower) || busy === 'sb:power'}
-          onclick={() => run('sb:power', () => callService('scene', 'turn_on', {}, MEDIA.soundbarPower))}
+          onclick={() => run('sb:power', () => callService('script', 'turn_on', {}, MEDIA.soundbarPower))}
         ><Icon path={mdiPower} size={15} />Aan/uit</button>
         <button
           class="btn ghost sm"
           title="Soundbar-ingang wisselen"
           disabled={!has(MEDIA.soundbarInput) || busy === 'sb:input'}
-          onclick={() => run('sb:input', () => callService('scene', 'turn_on', {}, MEDIA.soundbarInput, 'Soundbar-ingang gewisseld'))}
+          onclick={() => run('sb:input', () => callService('script', 'turn_on', {}, MEDIA.soundbarInput, 'Soundbar-ingang gewisseld'))}
         ><Icon path={mdiSwapHorizontal} size={15} />Ingang</button>
       </div>
     </div>

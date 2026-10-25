@@ -32,7 +32,7 @@
 {/snippet}
 
 <DeviceRow
-  iconPath={light.entity.includes('led_strip') ? mdiLedStripVariant : mdiFloorLamp}
+  iconPath={/led/i.test(light.name) ? mdiLedStripVariant : mdiFloorLamp}
   label={light.name}
   sub={na ? 'Niet bereikbaar' : on ? `Aan · ${preview ?? pct}%` : 'Uit'}
   active={on}

@@ -61,7 +61,7 @@
 
   const tvPlayPause = () => callService('remote', 'send_command', { command: MEDIA.castKeys.playPause }, MEDIA.chromecastRemote).catch(() => {});
   const tvKey = (/** @type {string} */ command) => callService('remote', 'send_command', { command }, MEDIA.tvRemote).catch(() => {});
-  const scene = (/** @type {string} */ id) => callService('scene', 'turn_on', {}, id).catch(() => {});
+  const script = (/** @type {string|null} */ id) => (id ? callService('script', 'turn_on', {}, id).catch(() => {}) : undefined);
 </script>
 
 {#snippet tvBelow()}
@@ -102,9 +102,9 @@
   <VolumeControl
     label="Soundbar (IR)"
     disabled={!has(MEDIA.soundbarVolumeUp)}
-    ondown={() => scene(MEDIA.soundbarVolumeDown)}
-    onup={() => scene(MEDIA.soundbarVolumeUp)}
-    onmute={() => scene(MEDIA.soundbarMute)}
+    ondown={() => script(MEDIA.soundbarVolumeDown)}
+    onup={() => script(MEDIA.soundbarVolumeUp)}
+    onmute={() => script(MEDIA.soundbarMute)}
   />
 {/snippet}
 
@@ -140,7 +140,7 @@
         disabled={!has(MEDIA.soundbarPower)}
         label={m.label}
         color={COLORS.soundbar}
-        onchange={() => callService('scene', 'turn_on', {}, MEDIA.soundbarPower).catch(() => {})}
+        onchange={() => callService('script', 'turn_on', {}, MEDIA.soundbarPower).catch(() => {})}
       />
     </DeviceRow>
   {/if}
