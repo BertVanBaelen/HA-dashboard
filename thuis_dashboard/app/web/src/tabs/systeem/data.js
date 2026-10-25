@@ -1,4 +1,4 @@
-import { mdiHomeAssistant, mdiPuzzle, mdiStorefrontOutline, mdiCardsOutline, mdiChip, mdiPackageVariant, mdiCellphone, mdiTablet, mdiRadiator, mdiDoorOpen, mdiWindowOpenVariant, mdiZigbee, mdiBattery } from '@mdi/js';
+import { mdiHomeAssistant, mdiPuzzle, mdiStorefrontOutline, mdiCardsOutline, mdiChip, mdiPackageVariant, mdiCellphone, mdiTablet, mdiRadiator, mdiDoorOpen, mdiWindowOpenVariant, mdiBattery } from '@mdi/js';
 import { PEOPLE, DOOR_SENSORS, CAR_ENTITIES } from '$shared/config.js';
 
 export const FEATURE_BACKUP = 8;
@@ -76,20 +76,19 @@ export function installOrder(s) {
 
 const stripSuffix = (s, re) => String(s?.attributes?.friendly_name ?? '').replace(re, '').trim();
 
-/** @param {Set<string>} [zigbeeIds] entity ids belonging to ZHA devices */
-export function batteryInfo(id, s, sensorLabels = {}, zigbeeIds) {
+export function batteryInfo(id, s, sensorLabels = {}) {
   const person = PEOPLE.find((p) => p.battery === id);
   if (person) return { label: `Telefoon ${person.name}`, icon: mdiCellphone, chargingEntity: person.batteryState };
   if (id.startsWith('sensor.tablet_')) return { label: 'Tablet', icon: mdiTablet, chargingEntity: 'sensor.tablet_battery_state' };
   const door = DOOR_SENSORS.find((d) => d.battery === id);
   if (door) return { label: sensorLabels?.[door.entity] || door.defaultLabel, icon: door.kind === 'window' ? mdiWindowOpenVariant : mdiDoorOpen };
   const re = /\s*(batterij|battery)( level)?$/i;
-  if (id.startsWith('binary_sensor.') && /_battery(_\d+)?$/.test(id) && !zigbeeIds?.has(id)) {
+  if (id.startsWith('binary_sensor.') && /_battery(_\d+)?$/.test(id)) {
     const serial = id.replace(/^binary_sensor\./, '').replace(/_battery(_\d+)?$/, '').toUpperCase();
     const fn = stripSuffix(s, re);
     return { label: `Tado ${fn && fn.toUpperCase() !== serial ? fn : serial}`, icon: mdiRadiator };
   }
-  return { label: stripSuffix(s, re) || id, icon: zigbeeIds?.has(id) ? mdiZigbee : mdiBattery };
+  return { label: stripSuffix(s, re) || id, icon: mdiBattery };
 }
 
 export const isBatteryEntity = (id, s) =>
@@ -127,12 +126,12 @@ export function collectUpdates(st) {
 }
 
 /** @param {Record<string, any>} st */
-export function collectBatteries(st, sensorLabels = {}, zigbeeIds = undefined) {
+export function collectBatteries(st, sensorLabels = {}) {
   return Object.values(st)
     .filter((s) => isBatteryEntity(s.entity_id, s))
     .map((s) => {
       const id = s.entity_id;
-      const info = batteryInfo(id, s, sensorLabels, zigbeeIds);
+      const info = batteryInfo(id, s, sensorLabels);
       const binary = id.startsWith('binary_sensor.');
       const n = Number(s.state);
       const na = isUnavail(s) || (!binary && !Number.isFinite(n));

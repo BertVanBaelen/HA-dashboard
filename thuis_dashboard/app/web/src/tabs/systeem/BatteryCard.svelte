@@ -7,9 +7,8 @@
   import Badge from '../../components/Badge.svelte';
   import EmptyState from '../../components/EmptyState.svelte';
   import { collectBatteries, levelColor } from './data.js';
-  import { zhaEntities } from './zha.js';
 
-  const items = $derived(collectBatteries($states, $household?.sensorLabels ?? {}, $zhaEntities));
+  const items = $derived(collectBatteries($states, $household?.sensorLabels ?? {}));
   const low = $derived(items.filter((i) => i.low).length);
 </script>
 

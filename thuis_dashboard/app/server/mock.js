@@ -515,21 +515,6 @@ export class MockHaClient extends EventEmitter {
     return {};
   }
 
-  #zhaDevices() {
-    const ago = (min) => new Date(Date.now() - min * 60e3).toISOString();
-    const dev = (ieee, nwk, name, manufacturer, model, device_type, power_source, available, lqi, lastMin, entities = []) => ({
-      ieee, nwk, name: `${manufacturer} ${model}`, user_given_name: name, manufacturer, model, quirk_class: 'zigpy.device.Device', available, lqi, rssi: lqi ? Math.round(lqi / 4 - 90) : null,
-      last_seen: ago(lastMin), power_source, device_type, area_id: null, entities: entities.map((entity_id) => ({ entity_id })),
-    });
-    return [
-      dev('00:12:4b:00:2a:3b:4c:5d', 0, null, 'ITEAD', 'Sonoff Zigbee 3.0 USB Dongle Plus V2', 'Coordinator', 'Mains', true, 255, 0),
-      dev('84:2e:14:ff:fe:11:22:33', 0x1a2b, 'Living raam', 'IKEA of Sweden', 'MYGGBETT door/window sensor', 'EndDevice', 'Battery or Unknown', true, 156, 4, ['binary_sensor.myggbett_door_window_sensor_door', 'sensor.myggbett_door_window_sensor_battery']),
-      dev('84:2e:14:ff:fe:44:55:66', 0x3c4d, 'Badkamerdeur', 'IKEA of Sweden', 'MYGGBETT door/window sensor', 'EndDevice', 'Battery or Unknown', true, 98, 22, ['binary_sensor.myggbett_door_window_sensor_door_2', 'sensor.myggbett_door_window_sensor_battery_2']),
-      dev('a4:c1:38:aa:bb:cc:dd:ee', 0x5e6f, 'Stekker bureau', 'IKEA of Sweden', 'TRETAKT Smart plug', 'Router', 'Mains', true, 212, 1),
-      dev('a4:c1:38:11:22:33:44:55', 0x7081, 'Temperatuur zolder', 'SONOFF', 'SNZB-02D', 'EndDevice', 'Battery or Unknown', false, 34, 60 * 26),
-    ];
-  }
-
   async send(msg) {
     if (msg.type === 'media_player/browse_media') {
       const item = (title, id, canPlay, canExpand) => ({ title, media_content_id: id, media_content_type: canPlay ? 'track' : 'directory', can_play: canPlay, can_expand: canExpand });
@@ -543,7 +528,6 @@ export class MockHaClient extends EventEmitter {
     if (msg.type === 'lovelace/resources' || msg.type === 'lovelace/dashboards/list') return [];
     if (msg.type.startsWith('lovelace/')) return null;
     if (msg.type === 'todo/item/list') return { items: this.todos[msg.entity_id] ?? [] };
-    if (msg.type === 'zha/devices') return this.#zhaDevices();
     if (msg.type === 'history/history_during_period') {
       const start = new Date(msg.start_time).getTime();
       const end = msg.end_time ? new Date(msg.end_time).getTime() : Date.now();

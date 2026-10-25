@@ -392,7 +392,6 @@ export const ALLOWED_SERVICES = {
   update: ['install'],
   backup: ['create_automatic'],
   automation: ['turn_on', 'turn_off', 'toggle'],
-  zha: ['permit'],
 };
 
 // Raw HA websocket commands the UI may send
@@ -400,7 +399,6 @@ export const ALLOWED_WS_COMMANDS = [
   'history/history_during_period',
   'recorder/statistics_during_period',
   'todo/item/list',
-  'zha/devices',
 ];
 
 export const DEFAULT_COMFORT = { living: 21, slaapkamer: 19, badkamer: 22 };
