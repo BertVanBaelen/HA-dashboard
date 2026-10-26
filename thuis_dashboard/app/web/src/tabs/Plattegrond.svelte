@@ -1,7 +1,7 @@
 <script>
   import { mdiWindowOpenVariant, mdiDoorOpen, mdiChevronRight, mdiFloorPlan, mdiHomeVariantOutline } from '@mdi/js';
-  import { FLOORPLAN, FLOORPLAN_ROOMS } from '$shared/config.js';
-  import { states, household } from '../lib/api.js';
+  import { states, household, topology } from '../lib/api.js';
+  import { planRooms } from '../lib/rooms.js';
   import Icon from '../components/Icon.svelte';
   import RoomSheet from './plattegrond/RoomSheet.svelte';
   import { planIcon } from './plattegrond/icons.js';
@@ -20,9 +20,11 @@
     localStorage.setItem(VIEW_KEY, v);
   }
 
-  /** @type {import('./plattegrond/summary.js').PlanRoom[]} */
-  const rooms = FLOORPLAN_ROOMS;
-  const [vx, vy, vw, vh] = FLOORPLAN.viewBox;
+  const layout = $derived($household?.layout);
+  const plan = $derived(planRooms(layout, $topology));
+  const drawn = $derived(plan.placed.filter((r) => r.areaId || r.name));
+  const rooms = $derived([...drawn, ...plan.unplaced]);
+  const [vx, vy, vw, vh] = $derived(layout?.viewBox ?? [0, 0, 300, 520]);
   const pct = (/** @type {number} */ v, /** @type {number} */ total) => `${((v / total) * 100).toFixed(3)}%`;
   const box = (/** @type {number[]} */ r) => `left:${pct(r[0] - vx, vw)};top:${pct(r[1] - vy, vh)};width:${pct(r[2], vw)};height:${pct(r[3], vh)}`;
   // Small regions only get a single-line badge
@@ -30,7 +32,9 @@
 
   const sums = $derived(Object.fromEntries(rooms.map((r) => [r.id, summarize(r, $states, $household)])));
   const houseRooms = $derived(rooms.filter((r) => sums[r.id].deviceCount > 0));
-  const bareRooms = $derived(rooms.filter((r) => !sums[r.id].deviceCount));
+  const bareRooms = $derived(drawn.filter((r) => !sums[r.id].deviceCount));
+  const offPlan = $derived(plan.unplaced.filter((r) => sums[r.id].deviceCount > 0));
+  const onPlan = $derived(houseRooms.filter((r) => r.rect));
 
   let selected = $state(/** @type {import('./plattegrond/summary.js').PlanRoom|null} */ (null));
   let open = $state(false);
@@ -43,7 +47,7 @@
     const id = $roomRequest;
     if (!id) return;
     roomRequest.set(null);
-    const r = rooms.find((x) => x.id === id);
+    const r = rooms.find((x) => x.id === id || x.areaId === id);
     if (r) show(r);
   });
 
@@ -60,15 +64,15 @@
   }
 </script>
 
-<div class="plattegrond" class:house-mode={view === 'house'}>
+<div class="plattegrond" class:house-mode={view === 'house'} style="--ar:{vw / vh}">
   <div class="plan-wrap">
     {#if view === 'house'}
       <HouseView rooms={houseRooms} {sums} selectedId={open ? selected?.id : null} onselect={show} {describe} />
     {:else}
     <div class="plan no-swipe" style="aspect-ratio:{vw} / {vh}" role="group" aria-label="Plattegrond van het appartement">
-      <FloorSvg />
+      <FloorSvg {layout} />
       <svg class="plan-sun" viewBox="0 0 135 44" aria-hidden="true"><SolarSun cx={114} cy={22} id="ps" scale={0.5} labelSide="left" labelGap={2} /></svg>
-      {#each rooms as r (r.id)}
+      {#each drawn as r (r.id)}
         {@const s = sums[r.id]}
         <button
           class="room"
@@ -97,7 +101,7 @@
   </div>
 
   <div class="list">
-    {#each [{ title: 'Ruimtes met apparaten', list: houseRooms }, { title: 'Ruimtes zonder apparaten', list: bareRooms }] as sec (sec.title)}
+    {#each [{ title: 'Ruimtes met apparaten', list: onPlan }, { title: 'Niet op plattegrond', list: offPlan }, { title: 'Ruimtes zonder apparaten', list: bareRooms }] as sec (sec.title)}
     {#if sec.list.length}
     <h3 class="section-title">{sec.title}</h3>
     <div class="rooms stagger">
@@ -126,7 +130,7 @@
   @media (min-width: 900px) {
     .plattegrond {
       display: grid; align-items: start;
-      grid-template-columns: min(55%, max(340px, calc((100dvh - 200px) * 300 / 520))) minmax(300px, 1fr);
+      grid-template-columns: min(55%, max(340px, calc((100dvh - 200px) * var(--ar)))) minmax(300px, 1fr);
     }
     .plan-wrap { position: sticky; top: 12px; }
     .list .section-title:first-child { margin-top: 0; }
@@ -135,7 +139,7 @@
   .plan-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
   .plan {
     position: relative; overflow: hidden; isolation: isolate;
-    width: min(100%, max(300px, calc((100dvh - 200px) * 300 / 520)));
+    width: min(100%, max(300px, calc((100dvh - 200px) * var(--ar))));
     border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow);
     background: var(--surface-2); user-select: none; -webkit-user-select: none;
   }

@@ -8,7 +8,7 @@ export const settingsRequest = writable(false);
 export const goTab = (id) => navigate.set(id);
 export const openSettings = () => settingsRequest.set(true);
 
-/** Set to a FLOORPLAN_ROOMS id to open that room on the Huisje tab (Plattegrond consumes and resets it). */
+/** Set to a layout room id or HA area id to open that room on the Huisje tab (Plattegrond consumes and resets it). */
 export const roomRequest = writable(/** @type {string|null} */ (null));
 export const openRoom = (/** @type {string} */ id) => {
   roomRequest.set(id);

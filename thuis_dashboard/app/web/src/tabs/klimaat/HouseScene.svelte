@@ -3,8 +3,9 @@
   import { cubicOut } from 'svelte/easing';
   import { fade, scale } from 'svelte/transition';
   import { mdiThermometer } from '@mdi/js';
-  import { HOME, ROOMS, DOOR_SENSORS } from '$shared/config.js';
-  import { states, household, isOn, unavailable } from '../../lib/api.js';
+  import { HOME } from '$shared/config.js';
+  import { states, household, topology, isOn, unavailable } from '../../lib/api.js';
+  import { allClimates, allOpenings, openingLabel } from '../../lib/rooms.js';
 
   const toNum = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
   const fmt = (v) => (v == null ? '–' : v.toFixed(1).replace('.', ','));
@@ -17,15 +18,19 @@
   const FALLBACK = [SLOTS.living, SLOTS.slaapkamer, SLOTS.badkamer];
 
   const extraWindows = $derived(
-    DOOR_SENSORS.filter((d) => d.kind === 'window').map((d) => {
-      const label = $household?.sensorLabels?.[d.entity] || d.defaultLabel;
-      const room = ROOMS.find((r) => label.toLowerCase().includes(r.name.toLowerCase()) || label.toLowerCase().includes(r.key));
-      return { entity: d.entity, label, room: room?.key ?? null, open: isOn($states[d.entity]) };
+    allOpenings($topology).filter((d) => d.kind === 'window').map((d) => {
+      const room = d.areaId && $topology.rooms[d.areaId]?.climate ? d.areaId : null;
+      return { entity: d.entity, label: openingLabel(d, $household), room, open: isOn($states[d.entity]) };
     }),
   );
 
+  const climRooms = $derived(allClimates($topology).slice(0, 3));
+  const slots = $derived.by(() => {
+    const free = FALLBACK.filter((s) => !climRooms.some((r) => SLOTS[r.key] === s));
+    return Object.fromEntries(climRooms.map((r) => [r.key, SLOTS[r.key] ?? free.shift()]));
+  });
   const rooms = $derived(
-    ROOMS.map((r, i) => {
+    climRooms.map((r) => {
       const c = $states[r.climate];
       const a = c?.attributes ?? {};
       const temp = toNum($states[r.temperature]?.state) ?? toNum(a.current_temperature);
@@ -33,7 +38,7 @@
       const heating = !!c && c.state !== 'off' && !unavailable(c) && (a.hvac_action === 'heating' || heatPct > 0);
       const own = extraWindows.filter((w) => w.room === r.key);
       const open = isOn($states[r.window]) || own.some((w) => w.open);
-      return { key: r.key, name: r.name, temp, heating, open, slot: SLOTS[r.key] ?? FALLBACK[i % FALLBACK.length] };
+      return { key: r.key, name: r.name, temp, heating, open, slot: slots[r.key] };
     }),
   );
   const loose = $derived(extraWindows.filter((w) => !w.room));

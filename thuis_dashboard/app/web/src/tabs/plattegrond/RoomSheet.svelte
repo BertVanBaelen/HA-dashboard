@@ -3,7 +3,6 @@
     mdiThermometer, mdiWaterPercent, mdiWindowOpenVariant, mdiWindowClosedVariant, mdiDoorOpen, mdiDoorClosed,
     mdiPlayCircleOutline, mdiFire, mdiLightbulbOn, mdiLightbulbOutline,
   } from '@mdi/js';
-  import { LIGHTS } from '$shared/config.js';
   import { states, household, callService, unavailable, num, attr } from '../../lib/api.js';
   import Sheet from '../../components/Sheet.svelte';
   import Icon from '../../components/Icon.svelte';
@@ -23,9 +22,7 @@
 
   const sum = $derived(room ? summarize(room, $states, $household) : null);
   const cr = $derived(room ? climateRoom(room) : null);
-  const lights = $derived(
-    (room?.lights ?? []).map((id) => LIGHTS.find((l) => l.entity === id) ?? { entity: id, name: attr($states[id], 'friendly_name') ?? id, room: room?.name ?? '', sceneSelect: null }),
-  );
+  const lights = $derived(room?.lightItems ?? []);
   const empty = $derived(!!sum && sum.deviceCount === 0);
 
   let lamp = $state(/** @type {any} */ (null));

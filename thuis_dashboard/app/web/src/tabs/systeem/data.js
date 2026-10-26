@@ -1,5 +1,6 @@
 import { mdiHomeAssistant, mdiPuzzle, mdiStorefrontOutline, mdiCardsOutline, mdiChip, mdiPackageVariant, mdiCellphone, mdiTablet, mdiRadiator, mdiDoorOpen, mdiWindowOpenVariant, mdiBattery } from '@mdi/js';
-import { PEOPLE, DOOR_SENSORS, CAR_ENTITIES } from '$shared/config.js';
+import { PEOPLE, CAR_ENTITIES } from '$shared/config.js';
+import { openingLabel } from '../../lib/rooms.js';
 
 export const FEATURE_BACKUP = 8;
 
@@ -76,12 +77,12 @@ export function installOrder(s) {
 
 const stripSuffix = (s, re) => String(s?.attributes?.friendly_name ?? '').replace(re, '').trim();
 
-export function batteryInfo(id, s, sensorLabels = {}) {
+export function batteryInfo(id, s, household = null, openings = []) {
   const person = PEOPLE.find((p) => p.battery === id);
   if (person) return { label: `Telefoon ${person.name}`, icon: mdiCellphone, chargingEntity: person.batteryState };
   if (id.startsWith('sensor.tablet_')) return { label: 'Tablet', icon: mdiTablet, chargingEntity: 'sensor.tablet_battery_state' };
-  const door = DOOR_SENSORS.find((d) => d.battery === id);
-  if (door) return { label: sensorLabels?.[door.entity] || door.defaultLabel, icon: door.kind === 'window' ? mdiWindowOpenVariant : mdiDoorOpen };
+  const door = openings.find((d) => d.battery === id);
+  if (door) return { label: openingLabel(door, household), icon: door.kind === 'window' ? mdiWindowOpenVariant : mdiDoorOpen };
   const re = /\s*(batterij|battery)( level)?$/i;
   if (id.startsWith('binary_sensor.') && /_battery(_\d+)?$/.test(id)) {
     const serial = id.replace(/^binary_sensor\./, '').replace(/_battery(_\d+)?$/, '').toUpperCase();
@@ -126,12 +127,12 @@ export function collectUpdates(st) {
 }
 
 /** @param {Record<string, any>} st */
-export function collectBatteries(st, sensorLabels = {}) {
+export function collectBatteries(st, household = null, openings = []) {
   return Object.values(st)
     .filter((s) => isBatteryEntity(s.entity_id, s))
     .map((s) => {
       const id = s.entity_id;
-      const info = batteryInfo(id, s, sensorLabels);
+      const info = batteryInfo(id, s, household, openings);
       const binary = id.startsWith('binary_sensor.');
       const n = Number(s.state);
       const na = isUnavail(s) || (!binary && !Number.isFinite(n));

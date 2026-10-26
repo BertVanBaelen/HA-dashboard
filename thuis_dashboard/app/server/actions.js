@@ -1,4 +1,4 @@
-import { ALL_OFF, LIGHTS, MEDIA, PEOPLE, ROOMS, tvIsOn, stereoIsOn } from '../shared/config.js';
+import { HOME, MEDIA, PEOPLE, DEFAULT_COMFORT_TEMP, tvIsOn, stereoIsOn } from '../shared/config.js';
 import { Spotify, resolveSpotifyEntity } from './spotify.js';
 
 const ARRIVAL_DEBOUNCE_MS = 30 * 60 * 1000;
@@ -6,8 +6,9 @@ const PRESENCE_DEBOUNCE_MS = 2 * 60 * 1000;
 const HEAT_ACTION_PREFIX = 'DASH_HEAT_';
 
 export class Actions {
-  constructor({ ha, store, log = console }) {
+  constructor({ ha, store, topology, log = console }) {
     this.ha = ha;
+    this.topology = topology;
     this.store = store;
     this.log = log;
     this.lastArrival = new Map();
@@ -32,6 +33,26 @@ export class Actions {
     return this.ha.getState(entityId)?.state === 'on';
   }
 
+  #rooms() {
+    const t = this.topology?.get();
+    return t ? [...Object.values(t.rooms), t.unassigned] : [];
+  }
+
+  #lights() {
+    return this.#rooms().flatMap((r) => r.lights);
+  }
+
+  #climateRoom(areaId) {
+    const t = this.topology?.get();
+    const c = t?.rooms[areaId]?.climate;
+    return c ? { ...c, name: t.areas.find((a) => a.id === areaId)?.name ?? areaId } : null;
+  }
+
+  climateAreas() {
+    const t = this.topology?.get();
+    return (t?.areas ?? []).filter((a) => t.rooms[a.id]?.climate);
+  }
+
   async #steps(steps) {
     const failed = [];
     for (const [label, fn] of steps) {
@@ -48,18 +69,20 @@ export class Actions {
   // ---- Composite actions ---------------------------------------------------
 
   async allesUit() {
+    const lights = this.#lights().map((l) => l.entity);
+    const climates = this.#rooms().map((r) => r.climate?.entity).filter(Boolean);
     return this.#steps([
-      ['Lampen', () => this.ha.callService('light', 'turn_off', {}, { entity_id: ALL_OFF.lights })],
+      ...(lights.length ? [['Lampen', () => this.ha.callService('light', 'turn_off', {}, { entity_id: lights })]] : []),
       ['Media', () => this.mediaMode('uit')],
-      ['Chromecast', () => this.ha.callService('media_player', 'turn_off', {}, { entity_id: ALL_OFF.chromecast })],
-      ['Ventilator', () => this.ha.callService('switch', 'turn_off', {}, { entity_id: ALL_OFF.fan })],
-      ['Verwarming', async () => {
+      ['Chromecast', () => this.ha.callService('media_player', 'turn_off', {}, { entity_id: MEDIA.chromecast })],
+      ['Ventilator', () => this.ha.callService('switch', 'turn_off', {}, { entity_id: HOME.fan })],
+      ...(climates.length ? [['Verwarming', async () => {
         try {
-          await this.ha.callService('climate', 'set_preset_mode', { preset_mode: 'away' }, { entity_id: ALL_OFF.climates });
+          await this.ha.callService('climate', 'set_preset_mode', { preset_mode: 'away' }, { entity_id: climates });
         } catch {
-          await this.ha.callService('climate', 'set_hvac_mode', { hvac_mode: 'off' }, { entity_id: ALL_OFF.climates });
+          await this.ha.callService('climate', 'set_hvac_mode', { hvac_mode: 'off' }, { entity_id: climates });
         }
-      }],
+      }]] : []),
     ]);
   }
 
@@ -91,7 +114,7 @@ export class Actions {
   async applyPreset(presetId) {
     const preset = this.store.getHousehold().presets.find((p) => p.id === presetId);
     if (!preset) throw new Error('Preset niet gevonden');
-    const known = new Set(LIGHTS.map((l) => l.entity));
+    const known = new Map(this.#lights().map((l) => [l.entity, l]));
     const steps = Object.entries(preset.lights).filter(([entityId]) => known.has(entityId)).map(([entityId, cfg]) => [entityId, async () => {
       if (!cfg.on) return this.ha.callService('light', 'turn_off', {}, { entity_id: entityId });
       const data = {};
@@ -99,7 +122,7 @@ export class Actions {
       if (cfg.rgb) data.rgb_color = cfg.rgb;
       else if (cfg.colorTemp) data.color_temp_kelvin = cfg.colorTemp;
       await this.ha.callService('light', 'turn_on', data, { entity_id: entityId });
-      const light = LIGHTS.find((l) => l.entity === entityId);
+      const light = known.get(entityId);
       if (cfg.scene && light?.sceneSelect) {
         await this.ha.callService('select', 'select_option', { option: cfg.scene }, { entity_id: light.sceneSelect });
       }
@@ -110,7 +133,7 @@ export class Actions {
   /** Snapshot current lamp state into a preset object. */
   capturePreset() {
     const lights = {};
-    for (const { entity } of LIGHTS) {
+    for (const { entity } of this.#lights()) {
       const s = this.ha.getState(entity);
       if (!s || s.state !== 'on') {
         lights[entity] = { on: false };
@@ -197,15 +220,15 @@ export class Actions {
     return this.#steps(steps);
   }
 
-  async heatRoom(roomKey) {
-    const room = ROOMS.find((r) => r.key === roomKey);
+  async heatRoom(areaId) {
+    const room = this.#climateRoom(areaId);
     if (!room) throw new Error('Onbekende kamer');
-    const temperature = Number(this.store.getHousehold().comfort[roomKey]);
+    const temperature = Number(this.store.getHousehold().comfort[areaId] ?? DEFAULT_COMFORT_TEMP);
     try {
-      await this.ha.callService('tado', 'set_climate_timer', { temperature, requested_overlay: 'NEXT_TIME_BLOCK' }, { entity_id: room.climate });
+      await this.ha.callService('tado', 'set_climate_timer', { temperature, requested_overlay: 'NEXT_TIME_BLOCK' }, { entity_id: room.entity });
     } catch (err) {
       this.log.warn?.('[actions] tado.set_climate_timer failed, falling back', err.message);
-      await this.ha.callService('climate', 'set_temperature', { temperature, hvac_mode: 'heat' }, { entity_id: room.climate });
+      await this.ha.callService('climate', 'set_temperature', { temperature, hvac_mode: 'heat' }, { entity_id: room.entity });
     }
     return { room: room.name, temperature };
   }
@@ -303,16 +326,16 @@ export class Actions {
     this.lastArrival.set(userId, Date.now());
     const service = this.notifyServiceFor(userId);
     if (!service) return this.log.warn?.(`[arrival] no notify service for ${personId}`);
+    const comfort = this.store.getHousehold().comfort ?? {};
+    const rooms = this.climateAreas().sort((a, b) => (b.id in comfort) - (a.id in comfort)).slice(0, 3);
+    if (!rooms.length) return this.log.warn?.('[arrival] no rooms with heating');
     this.log.info?.(`[arrival] ${personId} arrived, notifying via notify.${service}`);
     await this.ha.callService('notify', service, {
       title: 'Welkom thuis 🏠',
       message: 'Welke kamer wil je opwarmen?',
       data: {
         tag: 'thuis-dashboard-arrival',
-        actions: [
-          { action: `${HEAT_ACTION_PREFIX}LIVING`, title: 'Living' },
-          { action: `${HEAT_ACTION_PREFIX}SLAAPKAMER`, title: 'Slaapkamer' },
-        ],
+        actions: rooms.map((a) => ({ action: `${HEAT_ACTION_PREFIX}${a.id.toUpperCase()}`, title: a.name })),
       },
     });
   }

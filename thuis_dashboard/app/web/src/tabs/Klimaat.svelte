@@ -2,8 +2,9 @@
   import { fly, slide } from 'svelte/transition';
   import { flip } from 'svelte/animate';
   import { mdiFan, mdiRadiator, mdiWindowOpenVariant, mdiDoorOpen, mdiRobotOutline } from '@mdi/js';
-  import { HOME, ROOMS, DOOR_SENSORS, DEFAULT_COMFORT } from '$shared/config.js';
-  import { states, household, callService, action, isOn, unavailable, num, toast } from '../lib/api.js';
+  import { HOME, DEFAULT_COMFORT_TEMP } from '$shared/config.js';
+  import { states, household, topology, callService, action, isOn, unavailable, num, toast } from '../lib/api.js';
+  import { allClimates, allOpenings, openingLabel } from '../lib/rooms.js';
   import { relTime } from '../lib/format.js';
   import Card from '../components/Card.svelte';
   import Icon from '../components/Icon.svelte';
@@ -12,12 +13,13 @@
   import RoomCard from './klimaat/RoomCard.svelte';
   import HouseScene from './klimaat/HouseScene.svelte';
 
+  const ROOMS = $derived(allClimates($topology));
   const warnings = $derived.by(() => {
     const out = [];
-    for (const d of DOOR_SENSORS) {
+    for (const d of allOpenings($topology)) {
       const s = $states[d.entity];
       if (!isOn(s)) continue;
-      const label = $household?.sensorLabels?.[d.entity] || d.defaultLabel;
+      const label = openingLabel(d, $household);
       out.push({ key: d.entity, kind: d.kind, text: `${d.kind === 'door' ? '🚪' : '🪟'} ${label} staat open`, since: s.last_changed });
     }
     for (const r of ROOMS) {
@@ -41,18 +43,19 @@
     }
   }
 
-  const bath = ROOMS.find((r) => r.key === 'badkamer');
+  const bathArea = $derived(Object.entries($topology.rooms).find(([, r]) => r.scripts.some((x) => x.entity === HOME.bathroomHeatScript))?.[0] ?? 'badkamer');
+  const bath = $derived(ROOMS.find((r) => r.key === bathArea));
   const bathScript = $derived($states[HOME.bathroomHeatScript]);
   const bathRunning = $derived(bathScript?.state === 'on');
   const bathTemp = $derived(bath ? $states[bath.temperature] : null);
-  const bathComfort = $derived(Number($household?.comfort?.badkamer ?? DEFAULT_COMFORT.badkamer));
+  const bathComfort = $derived(Number($household?.comfort?.[bathArea] ?? DEFAULT_COMFORT_TEMP));
   let bathBusy = $state(false);
   async function heatBathroom() {
     bathBusy = true;
     try {
       if (bathScript && !unavailable(bathScript)) await callService('script', 'turn_on', {}, HOME.bathroomHeatScript, 'Badkamer wordt verwarmd 🔥');
       else {
-        const r = await action('heatRoom', { room: 'badkamer' });
+        const r = await action('heatRoom', { room: bathArea });
         toast(`Badkamer verwarmt naar ${String(r?.temperature ?? bathComfort).replace('.', ',')}° 🔥`, 'ok');
       }
     } catch {

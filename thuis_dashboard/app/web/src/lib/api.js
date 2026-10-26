@@ -8,7 +8,10 @@ export const ready = writable(false);
 export const isMock = writable(false);
 /** @type {import('svelte/store').Writable<Record<string, HassEntity>>} */
 export const states = writable({});
-export const user = writable(/** @type {{id:string,name:string,displayName:string,person:string|null}|null} */ (null));
+export const user = writable(/** @type {{id:string,name:string,displayName:string,person:string|null,isAdmin?:boolean}|null} */ (null));
+export const isAdmin = derived(user, ($u) => !!$u?.isAdmin);
+/** Rooms and devices from the HA areas (see shared/topology.js). */
+export const topology = writable(/** @type {any} */ ({ areas: [], rooms: {}, unassigned: { lights: [], switches: [], scripts: [], sensors: [], openings: [], climate: null, media: [] } }));
 export const prefs = writable(/** @type {any} */ (null));
 export const household = writable(/** @type {any} */ (null));
 /** Other users and the calendars they selected. */
@@ -51,6 +54,7 @@ export function connect() {
         user.set(msg.user);
         prefs.set(msg.prefs);
         household.set(msg.household);
+        if (msg.topology) topology.set(msg.topology);
         others.set(msg.others ?? []);
         states.set(msg.states);
         haConnected.set(msg.haConnected);
@@ -79,6 +83,9 @@ export function connect() {
         break;
       case 'household':
         household.set(msg.household);
+        break;
+      case 'topology':
+        topology.set(msg.topology);
         break;
       case 'others':
         others.set(msg.others ?? []);
@@ -178,6 +185,10 @@ export function saveHousehold(patch) {
   const next = { ...get(household), ...patch };
   household.set(next);
   return withToast(request({ type: 'set_household', household: next }));
+}
+
+export function saveLayout(layout) {
+  return withToast(request({ type: 'set_layout', layout }), 'Plattegrond bewaard');
 }
 
 // ---- Helpers -------------------------------------------------------------

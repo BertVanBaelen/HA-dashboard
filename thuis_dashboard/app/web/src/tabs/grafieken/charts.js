@@ -4,7 +4,7 @@ import {
   mdiCellphone, mdiAccessPointNetwork,
   mdiRoadVariant, mdiCurrentAc, mdiLeaf, mdiMapMarkerPath, mdiCarTireAlert,
 } from '@mdi/js';
-import { ROOMS, HOME, CAR_ENTITIES as CAR, PEOPLE, DOOR_SENSORS } from '$shared/config.js';
+import { HOME, CAR_ENTITIES as CAR, PEOPLE } from '$shared/config.js';
 import { PERSON_COLORS } from '../../lib/colors.js';
 import { period5min, periodDaily, periodHourly } from './data.js';
 import { toKwh100, unitOf } from '../auto/carHistory.js';
@@ -16,18 +16,21 @@ const ROOM_ICONS = { living: mdiSofaOutline, slaapkamer: mdiBedOutline, badkamer
 const PCT = { unit: '%', range: [0, 100] };
 const friendlyLabel = (n, id) => n || id.replace(/^sensor\./, '').replace(/_battery(_level)?(_\d+)?$/, '').replace(/_/g, ' ');
 
-/** @returns {import('./data.js').ChartDef[]} */
-export function klimaatCharts() {
+/**
+ * @param {import('../../lib/rooms.js').ClimateRoom[]} ROOMS
+ * @returns {import('./data.js').ChartDef[]}
+ */
+export function klimaatCharts(ROOMS) {
   const rooms = ROOMS.map((r) => ({
     id: `room-${r.key}`,
     title: r.name,
-    iconPath: ROOM_ICONS[r.key],
+    iconPath: ROOM_ICONS[r.key] ?? mdiThermometer,
     defaultRange: '24u',
     axes: { y: { unit: '°C' }, y2: { unit: '%', digits: 0 } },
     series: [
-      { entity: r.temperature, label: 'Temperatuur', color: '--accent', type: 'area' },
+      r.temperature ? { entity: r.temperature, label: 'Temperatuur', color: '--accent', type: 'area' } : { entity: r.climate, attr: 'current_temperature', label: 'Temperatuur', color: '--accent', type: 'area', unit: '°C' },
       { entity: r.climate, attr: 'temperature', label: 'Setpoint', color: '--heat', type: 'step', dash: true, unit: '°C' },
-      { entity: r.humidity, label: 'Vochtigheid', color: '--info', axis: 'y2', digits: 0 },
+      r.humidity && { entity: r.humidity, label: 'Vochtigheid', color: '--info', axis: 'y2', digits: 0 },
     ].filter(Boolean),
   }));
   return [
@@ -52,7 +55,7 @@ export function klimaatCharts() {
       defaultRange: '24u',
       stacked: true,
       axes: { y: { unit: '%', zero: true, digits: 0 } },
-      series: ROOMS.map((r, i) => ({ entity: r.heating, label: r.name, color: ['--heat', '--accent-2', '--accent-3'][i % 3], digits: 0 })),
+      series: ROOMS.filter((r) => r.heating).map((r, i) => ({ entity: r.heating, label: r.name, color: ['--heat', '--accent-2', '--accent-3'][i % 3], digits: 0 })),
     },
   ];
 }
@@ -198,10 +201,11 @@ export function autoCharts() {
 /**
  * Battery sensors (device_class battery, %) not covered by the fixed phone/door charts, e.g. ZHA devices.
  * @param {Record<string, any>} st
+ * @param {{battery:string}[]} doors
  * @returns {string[]}
  */
-export function extraBatterySensors(st) {
-  const known = new Set([...PEOPLE.map((p) => p.battery), ...DOOR_SENSORS.map((d) => d.battery), CAR.soc]);
+export function extraBatterySensors(st, doors = []) {
+  const known = new Set([...PEOPLE.map((p) => p.battery), ...doors.map((d) => d.battery), CAR.soc]);
   return Object.values(st)
     .filter((s) => s.entity_id.startsWith('sensor.') && s.attributes?.device_class === 'battery' && s.attributes?.unit_of_measurement === '%')
     .map((s) => s.entity_id)
@@ -210,12 +214,12 @@ export function extraBatterySensors(st) {
 }
 
 /**
- * @param {Record<string,string>} labels sensor label overrides (household.sensorLabels)
+ * @param {{entity:string,battery:string,label:string}[]} doors door/window sensors with a battery
  * @param {(id: string) => string|undefined} friendly
  * @param {string[]} [extra] additional battery sensors (see extraBatterySensors)
  * @returns {import('./data.js').ChartDef[]}
  */
-export function batterijCharts(labels, friendly, extra = []) {
+export function batterijCharts(doors, friendly, extra = []) {
   const colors = ['--accent-3', '--info', '--warn', '--ok', '--heat', '--cool'];
   return [
     {
@@ -233,7 +237,7 @@ export function batterijCharts(labels, friendly, extra = []) {
       defaultRange: '30d',
       axes: { y: PCT },
       series: [
-        ...DOOR_SENSORS.map((d, i) => ({ entity: d.battery, label: labels?.[d.entity] ?? d.defaultLabel, color: ['--accent', '--accent-2'][i % 2], digits: 0 })),
+        ...doors.map((d, i) => ({ entity: d.battery, label: d.label, color: ['--accent', '--accent-2'][i % 2], digits: 0 })),
         ...extra.map((id, i) => ({ entity: id, label: friendlyLabel(friendly(id), id), color: colors[i % colors.length], digits: 0 })),
       ],
     },

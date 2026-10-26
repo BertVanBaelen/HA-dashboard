@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { slide, fly, fade } from 'svelte/transition';
   import { mdiFire, mdiCalendarClock, mdiPowerStandby, mdiRocketLaunch, mdiTimerOutline, mdiWindowOpenVariant, mdiWeatherSunsetUp, mdiHandBackRight, mdiChevronDown } from '@mdi/js';
-  import { DEFAULT_COMFORT } from '$shared/config.js';
+  import { DEFAULT_COMFORT_TEMP } from '$shared/config.js';
   import { states, household, callService, isOn, unavailable, toast } from '../../lib/api.js';
   import { fmtTime } from '../../lib/format.js';
   import Card from '../../components/Card.svelte';
@@ -11,7 +11,7 @@
   import Segmented from '../../components/Segmented.svelte';
   import TempControl from './TempControl.svelte';
 
-  /** @type {{ room: typeof import('$shared/config.js').ROOMS[number] }} */
+  /** @type {{ room: import('../../lib/rooms.js').ClimateRoom }} */
   let { room } = $props();
 
   const roomIcon = { living: 'sofa', slaapkamer: 'bed', badkamer: 'shower' };
@@ -36,7 +36,7 @@
   const overlaySensor = $derived($states[room.overlay]);
   const termination = $derived(String(overlaySensor?.attributes?.termination ?? '').toUpperCase());
   const manual = $derived(!na && (isOn(overlaySensor) || mode === 'heat' || mode === 'off'));
-  const comfort = $derived(Number($household?.comfort?.[room.key] ?? DEFAULT_COMFORT[room.key] ?? 21));
+  const comfort = $derived(Number($household?.comfort?.[room.key] ?? DEFAULT_COMFORT_TEMP));
   const minT = $derived(Math.max(toNum(a.min_temp) ?? 5, 10));
   const maxT = $derived(toNum(a.max_temp) ?? 25);
   const step = $derived(toNum(a.target_temp_step) ?? 0.5);

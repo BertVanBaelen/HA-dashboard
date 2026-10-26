@@ -24,6 +24,32 @@ staan onder **Huishouden**.
 Koppel elke HA-gebruiker aan zijn `person.*` (Instellingen → Personen → gebruiker kiezen),
 anders werken Welkom thuis en aankomstmeldingen niet.
 
+## Kamers, lampen en toestellen
+
+Welke lampen, schakelaars, scripts, sensoren, raam-/deursensoren en verwarming bij een kamer
+horen, komt uit de **Areas** van Home Assistant (area van de entiteit, anders die van het toestel).
+
+- **Lamp toevoegen**: geef de lamp (of het toestel) in HA de juiste area. Hij verschijnt dan
+  vanzelf in Verlichting, op het Huisje en in presets/"Alles uit". Entiteiten zonder area staan
+  onder "Zonder ruimte".
+- **Verbergen**: geef de entiteit in HA het label `dashboard_verbergen`. Uitgeschakelde of
+  verborgen entiteiten worden ook niet getoond.
+- **Verwarming**: een `climate.*` in een area maakt van die kamer een klimaatkamer
+  (temperatuur, vochtigheid en verwarmingsvermogen worden bij de area gezocht).
+- De **Media**-tab blijft vast ingesteld; enkel de kamer waar TV/stereo/soundbar op het Huisje
+  verschijnen volgt hun area.
+
+### Plattegrond bewerken (beheerders)
+
+HA-beheerders zien in ⚙️ **Instellingen → Huishouden → Plattegrond bewerken**. Daar kan je
+ruimtes toevoegen (aan een HA-area koppelen of "enkel tekening"), verslepen en vergroten,
+vloer en icoon kiezen, en deuren en ramen plaatsen. "Herstel standaard" zet de originele
+plattegrond terug. Areas met toestellen die niet getekend zijn verschijnen onder
+"Niet op plattegrond".
+
+Beheerders worden uit HA gelezen (groep *Administrators* of eigenaar). Lukt dat niet, dan geldt
+de add-on-optie `admins` (lijst van HA-gebruikersnamen) als reserve.
+
 ## Dashboard als startpagina
 
 Home Assistant kan een app (Ingress-paneel) niet rechtstreeks als standaard dashboard kiezen.

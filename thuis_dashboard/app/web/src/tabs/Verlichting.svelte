@@ -2,8 +2,8 @@
   import { flip } from 'svelte/animate';
   import { fly } from 'svelte/transition';
   import { mdiLightbulbGroup, mdiLightbulbGroupOff, mdiContentSavePlus } from '@mdi/js';
-  import { LIGHTS } from '$shared/config.js';
-  import { states, household, action, callService, saveHousehold, toast, unavailable } from '../lib/api.js';
+  import { allLights } from '../lib/rooms.js';
+  import { states, household, topology, action, callService, saveHousehold, toast, unavailable } from '../lib/api.js';
   import { openSettings } from '../lib/nav.js';
   import Icon from '../components/Icon.svelte';
   import Toggle from '../components/Toggle.svelte';
@@ -14,6 +14,7 @@
   import LampSheet from './verlichting/LampSheet.svelte';
   import { lampRgb, presetRgb, presetMatches, css } from './verlichting/color.js';
 
+  const LIGHTS = $derived(allLights($topology));
   const lamps = $derived(LIGHTS.filter((l) => $states[l.entity]));
   const rooms = $derived(
     [...new Set(lamps.map((l) => l.room))].map((room) => ({ room, lamps: lamps.filter((l) => l.room === room) })),

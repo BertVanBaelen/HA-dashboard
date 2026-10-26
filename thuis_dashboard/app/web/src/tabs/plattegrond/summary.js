@@ -1,20 +1,14 @@
-import { ROOMS, MEDIA, DOOR_SENSORS, tvIsOn, stereoIsOn } from '$shared/config.js';
+import { MEDIA, tvIsOn, stereoIsOn } from '$shared/config.js';
+import { openingLabel } from '../../lib/rooms.js';
 import { lampRgb, brightnessPct } from '../verlichting/color.js';
 
-/** @typedef {{ id: string, name: string, icon: string, rect: number[], climate?: string, lights?: string[], openings?: string[], media?: {kind:string,label:string}[], sensors?: {entity:string,label:string}[], switches?: {entity:string,label:string,icon?:string}[], scripts?: {entity:string,label:string,icon?:string}[] }} PlanRoom */
+/** @typedef {{ id: string, areaId?: string|null, name: string, icon: string, rect: number[]|null, floor?: string, furniture?: string|null, climate?: any, lights?: string[], lightItems?: any[], openings?: {entity:string,name:string,kind:string,battery:string|null}[], media?: {kind:string,label:string}[], sensors?: {entity:string,label:string}[], switches?: {entity:string,label:string,icon?:string}[], scripts?: {entity:string,label:string,icon?:string}[] }} PlanRoom */
 
 export const toNum = (/** @type {any} */ v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 export const fmt = (/** @type {number|null} */ v, digits = 1) => (v == null ? '–' : v.toFixed(digits).replace('.', ','));
 
 /** @param {PlanRoom} room */
-export const climateRoom = (room) => (room.climate ? ROOMS.find((r) => r.key === room.climate) ?? null : null);
-
-/** Label for a door/window sensor, honouring household overrides. */
-export function openingLabel(entity, household) {
-  const d = DOOR_SENSORS.find((x) => x.entity === entity);
-  return household?.sensorLabels?.[entity] || d?.defaultLabel || entity;
-}
-export const openingKind = (entity) => DOOR_SENSORS.find((x) => x.entity === entity)?.kind ?? 'window';
+export const climateRoom = (room) => room.climate ?? null;
 
 const PLAYING = ['playing', 'buffering'];
 
@@ -56,11 +50,11 @@ export function summarize(room, s, household) {
       if (PLAYING.includes(s[MEDIA.stereo]?.state)) mediaPlaying = true;
     } else if (m.kind === 'soundbar' && s[MEDIA.soundbarOn]?.state === 'on') {
       mediaOn = true;
-          mediaKind ??= 'soundbar';
+      mediaKind ??= 'soundbar';
     }
   }
 
-  const openings = (room.openings ?? []).map((id) => ({ entity: id, label: openingLabel(id, household), kind: openingKind(id), open: s[id]?.state === 'on' }));
+  const openings = (room.openings ?? []).map((o) => ({ entity: o.entity, label: openingLabel(o, household), kind: o.kind, open: s[o.entity]?.state === 'on' }));
   const tadoWindow = cr ? s[cr.window]?.state === 'on' || a.hvac_action === 'window_open' : false;
   const open = openings.filter((o) => o.open);
   const switchesOn = (room.switches ?? []).filter((x) => s[x.entity]?.state === 'on').length;

@@ -1,12 +1,15 @@
 import { EventEmitter } from 'node:events';
 
+const REGISTRY_EVENTS = ['area_registry_updated', 'device_registry_updated', 'entity_registry_updated', 'label_registry_updated'];
+
 /**
  * Minimal Home Assistant WebSocket client with auto-reconnect.
- * Emits: 'ready', 'disconnected', 'state' (entityId, newState|null), 'states' (Map)
+ * Emits: 'ready', 'disconnected', 'state' (entityId, newState|null), 'states' (Map), 'registries' ({ areas, devices, entities, labels })
  */
 export class HaClient extends EventEmitter {
   constructor({ url, token, log = console }) {
     super();
+    this.registries = { areas: [], devices: [], entities: [], labels: [] };
     this.url = url;
     this.token = token;
     this.log = log;
@@ -20,7 +23,24 @@ export class HaClient extends EventEmitter {
   }
 
   start() {
+    for (const ev of REGISTRY_EVENTS) this.subscribeEvents(ev, () => this.#scheduleRegistries());
     this.#connect();
+  }
+
+  #scheduleRegistries() {
+    clearTimeout(this.regTimer);
+    this.regTimer = setTimeout(() => this.fetchRegistries().then((r) => this.emit('registries', r)).catch((e) => this.log.warn?.('[ha] registries failed', e.message)), 500);
+  }
+
+  async fetchRegistries() {
+    const [areas, devices, entities, labels] = await Promise.all(
+      ['area', 'device', 'entity', 'label'].map((k) => this.send({ type: `config/${k}_registry/list` }).catch((e) => {
+        this.log.warn?.(`[ha] ${k} registry failed`, e.message);
+        return [];
+      })),
+    );
+    this.registries = { areas: areas ?? [], devices: devices ?? [], entities: entities ?? [], labels: labels ?? [] };
+    return this.registries;
   }
 
   #connect() {
@@ -90,7 +110,9 @@ export class HaClient extends EventEmitter {
     try {
       const states = await this.send({ type: 'get_states' });
       this.states = new Map(states.map((s) => [s.entity_id, s]));
+      const registries = await this.fetchRegistries();
       this.emit('states', this.states);
+      this.emit('registries', registries);
       if (!this.subscriptions.has('__state_changed')) {
         this.subscriptions.set('__state_changed', {
           msg: { type: 'subscribe_events', event_type: 'state_changed' },

@@ -1,6 +1,6 @@
 <script>
-  import { LIGHTS } from '$shared/config.js';
-  import { states, action } from '../lib/api.js';
+  import { states, topology, action } from '../lib/api.js';
+  import { allLights } from '../lib/rooms.js';
   import Icon from '../components/Icon.svelte';
   import Toggle from '../components/Toggle.svelte';
   import Slider from '../components/Slider.svelte';
@@ -9,6 +9,13 @@
   /** @type {{ preset: any }} */
   let { preset = $bindable() } = $props();
 
+  const LIGHTS = $derived(allLights($topology));
+  const missing = $derived(Object.keys(preset.lights ?? {}).filter((id) => !LIGHTS.some((l) => l.entity === id)));
+
+  function drop(entity) {
+    const { [entity]: _, ...rest } = preset.lights;
+    preset.lights = rest;
+  }
   const ICONS = ['weatherSunset', 'book', 'weatherNight', 'power', 'star', 'heart', 'movie', 'sofa', 'bed', 'music'];
 
   const toHex = (rgb) => '#' + (rgb ?? [255, 255, 255]).map((v) => v.toString(16).padStart(2, '0')).join('');
@@ -69,6 +76,12 @@
           </label>
         {/if}
       {/if}
+    </div>
+  {/each}
+  {#each missing as id (id)}
+    <div class="lamp off spread">
+      <span class="col" style="gap:2px"><strong>{$states[id]?.attributes?.friendly_name ?? id}</strong><span class="small muted">Niet meer gevonden</span></span>
+      <button class="btn icon ghost sm" onclick={() => drop(id)} aria-label="Verwijderen"><Icon name="delete" size={18} /></button>
     </div>
   {/each}
   <button class="btn soft" onclick={capture}><Icon name="camera" size={18} />Huidige stand overnemen</button>

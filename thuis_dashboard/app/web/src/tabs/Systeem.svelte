@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import { scale } from 'svelte/transition';
   import { mdiShieldCheck, mdiAlertCircle, mdiAlertOctagon, mdiUpdate, mdiBackupRestore, mdiBatteryAlert, mdiWifiOff } from '@mdi/js';
-  import { states, household, unavailable } from '../lib/api.js';
+  import { states, household, topology, unavailable } from '../lib/api.js';
+  import { allOpenings } from '../lib/rooms.js';
   import { relTime } from '../lib/format.js';
   import Icon from '../components/Icon.svelte';
   import UpdatesCard from './systeem/UpdatesCard.svelte';
@@ -18,7 +19,7 @@
   });
 
   const updateCount = $derived(collectUpdates($states).length);
-  const batteries = $derived(collectBatteries($states, $household?.sensorLabels ?? {}));
+  const batteries = $derived(collectBatteries($states, $household, allOpenings($topology)));
   const lowBatteries = $derived(batteries.filter((b) => b.low).length);
   const weakBatteries = $derived(batteries.filter((b) => !b.low && !b.na && !b.binary && (b.pct ?? 100) < 40).length);
   const offline = $derived(collectConnectivity($states).filter((c) => !c.ok).length);

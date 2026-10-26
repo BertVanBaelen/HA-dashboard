@@ -1,14 +1,15 @@
 <script>
   import { flip } from 'svelte/animate';
   import { mdiBatteryAlert, mdiBatteryCharging, mdiBattery } from '@mdi/js';
-  import { states, household } from '../../lib/api.js';
+  import { states, household, topology } from '../../lib/api.js';
+  import { allOpenings } from '../../lib/rooms.js';
   import Card from '../../components/Card.svelte';
   import Icon from '../../components/Icon.svelte';
   import Badge from '../../components/Badge.svelte';
   import EmptyState from '../../components/EmptyState.svelte';
   import { collectBatteries, levelColor } from './data.js';
 
-  const items = $derived(collectBatteries($states, $household?.sensorLabels ?? {}));
+  const items = $derived(collectBatteries($states, $household, allOpenings($topology)));
   const low = $derived(items.filter((i) => i.low).length);
 </script>
 

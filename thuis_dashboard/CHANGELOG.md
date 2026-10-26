@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0
+- Kamers komen nu uit de **Areas van Home Assistant**: lampen, schakelaars, scripts, sensoren, ramen/deuren,
+  verwarming en de plaats van TV/stereo/soundbar volgen de area van de entiteit (of van het toestel).
+  Een nieuwe lamp toevoegen = in HA de juiste area kiezen. Verbergen kan met het label `dashboard_verbergen`.
+- Huisje: de plattegrond wordt getekend uit gegevens en kan door **HA-beheerders** aangepast worden via
+  Instellingen → Huishouden → Plattegrond bewerken (ruimtes, vloer, icoon, deuren en ramen).
+  Ruimtes met toestellen die niet getekend zijn verschijnen onder "Niet op plattegrond".
+- Eenmalige migratie: de huidige plattegrond, comforttemperaturen, sensornamen en presets blijven behouden.
+- Nieuwe add-on-optie `admins` (gebruikersnamen) als reserve wanneer de beheerdersrechten niet uit HA gelezen kunnen worden.
+- Thuiskomstmelding biedt verwarmen aan voor de kamers met verwarming (max. 3).
 ## 0.6.2
 - Soundbar (Media-tab en plattegrond): aan/uit, volume en ingang lopen nu via scripts
   (`script.sounbar_power`, `script.soundbar_volume_up/down`, `script.soundbar_input_toggle`) in plaats van scenes.

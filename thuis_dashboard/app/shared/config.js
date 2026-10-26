@@ -26,51 +26,6 @@ export const PEOPLE = [
   },
 ];
 
-export const ROOMS = [
-  {
-    key: 'living',
-    name: 'Living',
-    climate: 'climate.living_living',
-    temperature: 'sensor.living_living_temperature',
-    humidity: 'sensor.living_living_humidity',
-    heating: 'sensor.living_living_heating',
-    tadoMode: 'sensor.living_living_tado_mode',
-    window: 'binary_sensor.living_living_window',
-    earlyStart: 'binary_sensor.living_living_early_start',
-    overlay: 'binary_sensor.living_living_overlay',
-    extraTemperature: null,
-    extraHumidity: null,
-  },
-  {
-    key: 'slaapkamer',
-    name: 'Slaapkamer',
-    climate: 'climate.slaapkamer_slaapkamer',
-    temperature: 'sensor.slaapkamer_slaapkamer_temperature',
-    humidity: 'sensor.slaapkamer_slaapkamer_humidity',
-    heating: 'sensor.slaapkamer_slaapkamer_heating',
-    tadoMode: 'sensor.slaapkamer_slaapkamer_tado_mode',
-    window: 'binary_sensor.slaapkamer_slaapkamer_window',
-    earlyStart: 'binary_sensor.slaapkamer_slaapkamer_early_start',
-    overlay: 'binary_sensor.slaapkamer_slaapkamer_overlay',
-    extraTemperature: null,
-    extraHumidity: null,
-  },
-  {
-    key: 'badkamer',
-    name: 'Badkamer',
-    climate: 'climate.badkamer_badkamer',
-    temperature: 'sensor.badkamer_badkamer_temperature',
-    humidity: 'sensor.badkamer_badkamer_humidity',
-    heating: 'sensor.badkamer_badkamer_heating',
-    tadoMode: 'sensor.badkamer_badkamer_tado_mode',
-    window: 'binary_sensor.badkamer_badkamer_window',
-    earlyStart: 'binary_sensor.badkamer_badkamer_early_start',
-    overlay: 'binary_sensor.badkamer_badkamer_overlay',
-    extraTemperature: null,
-    extraHumidity: null,
-  },
-];
-
 export const HOME = {
   weather: 'weather.forecast_home',
   outdoorTemperature: 'sensor.thuis_outdoor_temperature',
@@ -86,16 +41,6 @@ export const HOME = {
   bathroomHeatScript: 'script.badkamer_verwarmen',
   windowAutomation: 'automation.verwarming_uit_bij_raam_open',
 };
-
-export const DOOR_SENSORS = [
-  { entity: 'binary_sensor.myggbett_door_window_sensor_door', battery: 'sensor.myggbett_door_window_sensor_battery', defaultLabel: 'Living raam', kind: 'window' },
-  { entity: 'binary_sensor.myggbett_door_window_sensor_door_2', battery: 'sensor.myggbett_door_window_sensor_battery_2', defaultLabel: 'Badkamerdeur', kind: 'door' },
-];
-
-export const LIGHTS = [
-  { entity: 'light.uplighter_floor_lamp', name: 'Uplighter', room: 'Slaapkamer', sceneSelect: 'select.uplighter_floor_lamp_scene' },
-  { entity: 'light.0x00124b001f69cb9d', name: 'LED-strip keuken', room: 'Living', sceneSelect: null },
-];
 
 export const MEDIA = {
   tvPower: 'media_player.slaapkamer_bert_tv',
@@ -253,55 +198,6 @@ export const CAR_CHARGE_PRICES = { acPerKwh: 0.37, dcPerKwh: 0.65, dcThresholdKw
 /** Usable battery capacity (kWh) when sensor total_battery_capacity is unavailable. */
 export const CAR_BATTERY_KWH = 61.7;
 
-export const ALL_OFF = {
-  lights: LIGHTS.map((l) => l.entity),
-  chromecast: 'media_player.chromecast_hd',
-  fan: 'switch.ventilator_socket_1',
-  climates: ROOMS.map((r) => r.climate),
-};
-
-// Plattegrond: drawn as SVG (web/src/tabs/plattegrond/FloorSvg.svelte); `rect` = [x, y, w, h] in viewBox units.
-// `climate` refers to a ROOMS key; media items use kind 'tv' | 'stereo' | 'soundbar'.
-// `icon` keys are resolved in web/src/tabs/plattegrond/icons.js.
-export const FLOORPLAN = { viewBox: [0, 0, 300, 520] };
-export const FLOORPLAN_ROOMS = [
-  { id: 'terras', name: 'Terras', icon: 'terrace', rect: [0, 0, 300, 44] },
-  { id: 'mistique', name: 'Mistique kamer', icon: 'mistique', rect: [6, 50, 92, 126] },
-  {
-    id: 'slaapkamer', name: 'Slaapkamer', icon: 'bed', rect: [102, 50, 192, 126],
-    climate: 'slaapkamer',
-    lights: ['light.uplighter_floor_lamp'],
-    sensors: [
-      { entity: 'sensor.bedroom_sensor_kamer_temperature', label: 'Temperatuur (kamer)' },
-      { entity: 'sensor.bedroom_sensor_kamer_humidity', label: 'Vochtigheid (kamer)' },
-    ],
-    switches: [
-      { entity: 'switch.bedroom_wekker_socket_1', label: 'Wekker', icon: 'alarm' },
-      { entity: 'switch.ventilator_socket_1', label: 'Ventilator', icon: 'fan' },
-    ],
-  },
-  { id: 'hall', name: 'Hall', icon: 'hall', rect: [62, 180, 90, 88] },
-  { id: 'bergplaats', name: 'Bergplaats', icon: 'storage', rect: [156, 180, 138, 88] },
-  {
-    id: 'badkamer', name: 'Badkamer', icon: 'shower', rect: [6, 272, 86, 104],
-    climate: 'badkamer',
-    openings: ['binary_sensor.myggbett_door_window_sensor_door_2'],
-    scripts: [{ entity: 'script.badkamer_verwarmen', label: 'Badkamer verwarmen', icon: 'heat' }],
-  },
-  { id: 'keuken', name: 'Keuken', icon: 'kitchen', rect: [6, 380, 86, 134] },
-  {
-    id: 'living', name: 'Living', icon: 'sofa', rect: [96, 272, 198, 242],
-    climate: 'living',
-    openings: ['binary_sensor.myggbett_door_window_sensor_door'],
-    lights: ['light.0x00124b001f69cb9d'],
-    media: [
-      { kind: 'tv', label: 'TV / Chromecast' },
-      { kind: 'stereo', label: 'Stereo' },
-      { kind: 'soundbar', label: 'Soundbar' },
-    ],
-  },
-];
-
 export const TABS = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'plattegrond', label: 'Huisje', icon: 'floorPlan' },
@@ -401,35 +297,13 @@ export const ALLOWED_WS_COMMANDS = [
   'todo/item/list',
 ];
 
-export const DEFAULT_COMFORT = { living: 21, slaapkamer: 19, badkamer: 22 };
-
-export const DEFAULT_PRESETS = [
-  {
-    id: 'avond', name: 'Avond', icon: 'weatherSunset',
-    lights: {
-      'light.uplighter_floor_lamp': { on: true, brightness: 40, rgb: [255, 140, 60] },
-      'light.0x00124b001f69cb9d': { on: true, brightness: 30, rgb: [255, 140, 60] },
-    },
-  },
-  {
-    id: 'lezen', name: 'Lezen', icon: 'book',
-    lights: {
-      'light.uplighter_floor_lamp': { on: true, brightness: 70, colorTemp: 4000 },
-      'light.0x00124b001f69cb9d': { on: false },
-    },
-  },
-  {
-    id: 'nacht', name: 'Nacht', icon: 'weatherNight',
-    lights: {
-      'light.uplighter_floor_lamp': { on: true, brightness: 5, colorTemp: 2200 },
-      'light.0x00124b001f69cb9d': { on: false },
-    },
-  },
-  {
-    id: 'uit', name: 'Uit', icon: 'power',
-    lights: {
-      'light.uplighter_floor_lamp': { on: false },
-      'light.0x00124b001f69cb9d': { on: false },
-    },
-  },
+// HA label that hides an entity from the dashboard
+export const HIDE_LABEL = 'dashboard_verbergen';
+export const DEFAULT_COMFORT_TEMP = 21;
+export const FLOOR_TYPES = [
+  { key: 'wood', label: 'Parket' },
+  { key: 'tile', label: 'Tegels' },
+  { key: 'plain', label: 'Effen' },
+  { key: 'stair', label: 'Trap' },
+  { key: 'deck', label: 'Terras' },
 ];

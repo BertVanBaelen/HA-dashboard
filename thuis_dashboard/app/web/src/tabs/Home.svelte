@@ -1,8 +1,9 @@
 <script>
   import { onMount } from 'svelte';
   import { fly, scale } from 'svelte/transition';
-  import { HOME, ROOMS, PEOPLE, FLOORPLAN_ROOMS } from '$shared/config.js';
-  import { states, user, prefs, household, action, callServiceResponse, num, name, toast } from '../lib/api.js';
+  import { HOME, PEOPLE } from '$shared/config.js';
+  import { allClimates } from '../lib/rooms.js';
+  import { states, user, prefs, household, topology, action, callServiceResponse, num, name, toast } from '../lib/api.js';
   import { icons, weatherLabels } from '../lib/icons.js';
   import { fmtTime, fmtDay, greeting, isSameDay, startOfDay } from '../lib/format.js';
   import { fetchEvents } from '../lib/calendar.js';
@@ -205,16 +206,15 @@
     <!-- H-04 temperatures -->
     <Card title="Binnen" icon="thermostat" onclick={() => goTab('klimaat')}>
       <div class="rooms">
-        {#each ROOMS as r (r.key)}
+        {#each allClimates($topology) as r (r.key)}
           {@const heating = Number($states[r.heating]?.state) > 0}
-          {@const plan = FLOORPLAN_ROOMS.find((p) => p.climate === r.key)}
           <button
             class="room"
             class:heating
             aria-label="{r.name} openen in Huisje"
             onclick={(e) => {
               e.stopPropagation();
-              plan ? openRoom(plan.id) : goTab('plattegrond');
+              openRoom(r.key);
             }}
             onkeydown={(e) => e.stopPropagation()}
           >

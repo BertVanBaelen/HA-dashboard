@@ -8,6 +8,8 @@ import { MockHaClient, MOCK_USERS } from './mock.js';
 import { Store } from './store.js';
 import { Actions } from './actions.js';
 import { News } from './news.js';
+import { TopologyService } from './topology.js';
+import { AdminCheck } from './admin.js';
 import { ALLOWED_SERVICES, ALLOWED_WS_COMMANDS, EXCLUDED_ENTITY_PATTERNS, START_DASHBOARD } from '../shared/config.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -33,7 +35,9 @@ const ha = MOCK
       log,
     });
 const store = new Store(DATA_FILE, log);
-const actions = new Actions({ ha, store, log });
+const topology = new TopologyService({ ha, log });
+const admin = new AdminCheck({ ha, log, optionsFile: process.env.OPTIONS_FILE ?? (MOCK ? join(here, '..', '.mock-data', 'options.json') : '/data/options.json') });
+const actions = new Actions({ ha, store, topology, log });
 const news = new News({ log });
 
 // ---- Static files ----------------------------------------------------------
@@ -113,7 +117,7 @@ server.on('upgrade', (req, socket, head) => {
     socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
     return socket.destroy();
   }
-  wss.handleUpgrade(req, socket, head, (ws) => onClient(ws, user));
+  admin.isAdmin(user).catch(() => false).then((isAdmin) => wss.handleUpgrade(req, socket, head, (ws) => onClient(ws, { ...user, isAdmin })));
 });
 
 function send(ws, msg) {
@@ -135,6 +139,7 @@ function onClient(ws, user) {
     user: { ...user, person: actions.personForUser(user.id) },
     prefs: store.getUser(user.id),
     household: store.getHousehold(),
+    topology: topology.get(),
     others: store.othersFor(user.id),
     states: publicStates(),
     haConnected: ha.connected,
@@ -186,6 +191,12 @@ async function handle(client, msg) {
     }
     case 'set_household': {
       const household = await store.setHousehold(msg.household);
+      broadcast({ type: 'household', household });
+      return household;
+    }
+    case 'set_layout': {
+      if (!(await admin.isAdmin(client.user))) throw new Error('Alleen beheerders kunnen de plattegrond aanpassen');
+      const household = await store.setLayout(msg.layout);
       broadcast({ type: 'household', household });
       return household;
     }
@@ -276,6 +287,10 @@ ha.on('state', (id, s) => {
 ha.on('ready', () => {
   broadcast({ type: 'state_reset', states: publicStates() });
   broadcast({ type: 'ha', connected: true });
+});
+topology.on('change', async (t) => {
+  broadcast({ type: 'topology', topology: t });
+  if (await store.linkAreas(t.areas)) broadcast({ type: 'household', household: store.getHousehold() });
 });
 ha.on('disconnected', () => broadcast({ type: 'ha', connected: false }));
 

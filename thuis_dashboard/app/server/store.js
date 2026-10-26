@@ -1,8 +1,10 @@
 import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { TABS, DEFAULT_PRESETS, DEFAULT_COMFORT, DEFAULT_RADIOS, CAR_FLAGS, DOOR_SENSORS, NEWS_SOURCES } from '../shared/config.js';
+import { TABS, DEFAULT_RADIOS, CAR_FLAGS, NEWS_SOURCES } from '../shared/config.js';
+import { validateLayout } from '../shared/layout.js';
+import { defaultLayout, linkLayout, rekeyComfort, LEGACY_PRESETS, LEGACY_COMFORT, LEGACY_SENSOR_LABELS } from './migrate-layout.js';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const NEWS_DISMISS_DAYS = 4;
 const NEWS_DISMISS_MAX = 3000;
 
@@ -28,11 +30,12 @@ export function defaultHousehold() {
     sharedCalendars: [],
     calendarColors: {},
     lists: ['todo.shopping_list', 'todo.cleaning_day'],
-    presets: structuredClone(DEFAULT_PRESETS),
-    comfort: { ...DEFAULT_COMFORT },
-    sensorLabels: Object.fromEntries(DOOR_SENSORS.map((d) => [d.entity, d.defaultLabel])),
+    presets: structuredClone(LEGACY_PRESETS),
+    comfort: {},
+    sensorLabels: {},
     radios: structuredClone(DEFAULT_RADIOS),
     carFlags: Object.fromEntries(CAR_FLAGS.map((f) => [f.key, f.default])),
+    layout: null,
   };
 }
 
@@ -62,7 +65,17 @@ function normalizeUser(p) {
   return out;
 }
 
-function normalizeHousehold(h) {
+function normalizeLayout(l, log) {
+  if (!l) return defaultLayout();
+  try {
+    return { ...validateLayout(l), linked: l.linked !== false };
+  } catch (err) {
+    log?.warn?.('[store] invalid layout, using default', err.message);
+    return defaultLayout();
+  }
+}
+
+function normalizeHousehold(h, log) {
   const d = defaultHousehold();
   return {
     ...d,
@@ -72,14 +85,21 @@ function normalizeHousehold(h) {
     sensorLabels: { ...d.sensorLabels, ...(h?.sensorLabels ?? {}) },
     carFlags: { ...d.carFlags, ...(h?.carFlags ?? {}) },
     calendarColors: { ...(h?.calendarColors ?? {}) },
+    layout: normalizeLayout(h?.layout, log),
   };
+}
+
+/** Schema 1 → 2: defaults that used to live in code are written into the store. */
+function migrateHousehold(h, version) {
+  if (!h || version >= 2) return h;
+  return { ...h, comfort: { ...LEGACY_COMFORT, ...(h.comfort ?? {}) }, sensorLabels: { ...LEGACY_SENSOR_LABELS, ...(h.sensorLabels ?? {}) } };
 }
 
 export class Store {
   constructor(file, log = console) {
     this.file = file;
     this.log = log;
-    this.data = { version: SCHEMA_VERSION, users: {}, profiles: {}, household: defaultHousehold() };
+    this.data = { version: SCHEMA_VERSION, users: {}, profiles: {}, household: normalizeHousehold(migrateHousehold({}, 1), log) };
     this.writing = Promise.resolve();
   }
 
@@ -90,9 +110,10 @@ export class Store {
         version: SCHEMA_VERSION,
         users: Object.fromEntries(Object.entries(raw.users ?? {}).map(([k, v]) => [k, normalizeUser(v)])),
         profiles: raw.profiles ?? {},
-        household: normalizeHousehold(raw.household),
+        household: normalizeHousehold(migrateHousehold(raw.household, raw.version ?? 1), this.log),
       };
       this.log.info?.(`[store] loaded ${Object.keys(this.data.users).length} user(s)`);
+      if ((raw.version ?? 1) < SCHEMA_VERSION) await this.save();
     } catch (err) {
       if (err.code !== 'ENOENT') this.log.error?.('[store] load failed, using defaults', err);
       await this.save();
@@ -144,8 +165,28 @@ export class Store {
   }
 
   async setHousehold(household) {
-    this.data.household = normalizeHousehold(household);
+    this.data.household = normalizeHousehold({ ...household, layout: this.data.household.layout }, this.log);
     await this.save();
     return this.data.household;
+  }
+
+  async setLayout(layout) {
+    this.data.household = { ...this.data.household, layout: validateLayout(layout) };
+    await this.save();
+    return this.data.household;
+  }
+
+  /** Links layout rooms and comfort keys to HA areas once the areas are known. Returns true when changed. */
+  async linkAreas(areas) {
+    if (!areas?.length) return false;
+    const h = this.data.household;
+    const regs = areas.map((a) => ({ area_id: a.id ?? a.area_id, name: a.name }));
+    const layout = linkLayout(h.layout, regs);
+    const comfort = rekeyComfort(h.comfort, regs);
+    if (layout === h.layout && JSON.stringify(comfort) === JSON.stringify(h.comfort)) return false;
+    this.data.household = { ...h, layout, comfort };
+    this.log.info?.('[store] layout/comfort linked to HA areas');
+    await this.save();
+    return true;
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "thuis-dashboard",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,8 @@
     "build": "vite build",
     "check": "svelte-check --workspace web",
     "start": "node server/index.js",
-    "mock": "node server/index.js --mock"
+    "mock": "node server/index.js --mock",
+    "test": "node --test"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",

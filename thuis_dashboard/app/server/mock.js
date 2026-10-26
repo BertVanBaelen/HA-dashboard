@@ -9,6 +9,71 @@ export { MOCK_USERS };
 
 const now = () => new Date().toISOString();
 const rand = (a, b, d = 1) => Number((a + Math.random() * (b - a)).toFixed(d));
+
+const MOCK_AREAS = [['living', 'Living'], ['slaapkamer', 'Slaapkamer'], ['badkamer', 'Badkamer'], ['keuken', 'Keuken'], ['hall', 'Hall'], ['bergplaats', 'Bergplaats'], ['mistique_kamer', 'Mistique kamer']];
+/** device id -> [area, [entity_id, extra registry fields]] */
+const MOCK_DEVICES = {
+  ...Object.fromEntries(['living', 'slaapkamer', 'badkamer'].map((k) => [`tado_${k}`, [k, [
+    [`climate.${k}_${k}`],
+    ...['temperature', 'humidity', 'heating', 'tado_mode'].map((s) => [`sensor.${k}_${k}_${s}`]),
+    ...['window', 'early_start', 'overlay'].map((s) => [`binary_sensor.${k}_${k}_${s}`]),
+    ...['power', 'connectivity'].map((s) => [`binary_sensor.${k}_${k}_${s}`, { entity_category: 'diagnostic' }]),
+    [`switch.${k}_${k}_child_lock`, { entity_category: 'config' }],
+  ]]])),
+  uplighter: ['slaapkamer', [
+    ['light.uplighter_floor_lamp', { name: 'Uplighter' }],
+    ['select.uplighter_floor_lamp_scene', { entity_category: 'config' }],
+    ...Array.from({ length: 8 }, (_, i) => [`light.uplighter_floor_lamp_segment_${i + 1}`, { hidden_by: 'user' }]),
+    ...['music_mode', 'dreamview', 'ripple_light', 'side_light', 'bottom_light'].map((s) => [`switch.uplighter_floor_lamp_${s}`, { entity_category: 'config' }]),
+  ]],
+  bedroom_sensor: ['slaapkamer', [
+    ['sensor.bedroom_sensor_kamer_temperature', { name: 'Temperatuur (kamer)' }],
+    ['sensor.bedroom_sensor_kamer_humidity', { name: 'Vochtigheid (kamer)' }],
+  ]],
+  wekker: ['slaapkamer', [['switch.bedroom_wekker_socket_1', { name: 'Wekker' }], ['switch.bedroom_wekker_child_lock', { entity_category: 'config' }]]],
+  ventilator: ['slaapkamer', [['switch.ventilator_socket_1', { name: 'Ventilator' }], ['switch.ventilator_child_lock', { entity_category: 'config' }]]],
+  myggbett_1: ['living', [
+    ['binary_sensor.myggbett_door_window_sensor_door', { name: 'Living raam', original_device_class: 'window' }],
+    ['sensor.myggbett_door_window_sensor_battery'],
+    ['sensor.myggbett_door_window_sensor_battery_voltage', { entity_category: 'diagnostic' }],
+    ['sensor.myggbett_door_window_sensor_battery_type', { entity_category: 'diagnostic' }],
+  ]],
+  myggbett_2: ['badkamer', [
+    ['binary_sensor.myggbett_door_window_sensor_door_2', { name: 'Badkamerdeur', original_device_class: 'door' }],
+    ['sensor.myggbett_door_window_sensor_battery_2'],
+    ['sensor.myggbett_door_window_sensor_battery_voltage_2', { entity_category: 'diagnostic' }],
+    ['sensor.myggbett_door_window_sensor_battery_type_2', { entity_category: 'diagnostic' }],
+  ]],
+  led_strip: ['living', [['light.led_strip_keuken', { name: 'LED-strip keuken' }]]],
+  tv: ['living', [['media_player.slaapkamer_bert_tv'], ['remote.55mled810_12_remote']]],
+  chromecast: ['living', [['media_player.chromecast_hd'], ['remote.chromecast_hd']]],
+  stereo: ['living', [
+    ['media_player.living_room_stereo'],
+    ['switch.living_room_stereo_speaker_a', { entity_category: 'config' }],
+    ['switch.living_room_stereo_speaker_b', { entity_category: 'config' }],
+  ]],
+};
+const MOCK_LOOSE = [
+  ['script.badkamer_verwarmen', { area_id: 'badkamer', name: 'Badkamer verwarmen' }],
+  ['input_boolean.soundbar_aan', { area_id: 'living' }],
+];
+const MOCK_AUTH = [
+  { id: 'mock-user-bert', username: 'bert', name: 'Bert', is_owner: true, group_ids: ['system-admin'] },
+  { id: 'mock-user-marjo', username: 'marjo', name: 'Marjo', is_owner: false, group_ids: ['system-users'] },
+];
+
+function mockRegistries() {
+  const reg = (entity_id, device_id, extra = {}) => ({ entity_id, device_id, area_id: null, disabled_by: null, hidden_by: null, entity_category: null, labels: [], name: null, original_name: null, icon: null, ...extra });
+  return {
+    areas: MOCK_AREAS.map(([area_id, name]) => ({ area_id, name, icon: null, floor_id: null, labels: [] })),
+    devices: Object.entries(MOCK_DEVICES).map(([id, [area_id]]) => ({ id, area_id, name: id, name_by_user: null, disabled_by: null })),
+    entities: [
+      ...Object.entries(MOCK_DEVICES).flatMap(([dev, [, list]]) => list.map(([id, extra]) => reg(id, dev, extra))),
+      ...MOCK_LOOSE.map(([id, extra]) => reg(id, null, extra)),
+    ],
+    labels: [{ label_id: 'dashboard_verbergen', name: 'dashboard_verbergen' }],
+  };
+}
 const MG_MOCK = {
   ancillary_battery_voltage: ['12.6', 'V'], battery_energy: ['44.1', 'kWh'], total_battery_capacity: ['64', 'kWh'],
   charging_current: ['10.8', 'A'], charging_voltage: ['398', 'V'], last_charge_energy: ['21.4', 'kWh'],
@@ -274,9 +339,17 @@ export class MockHaClient extends EventEmitter {
     for (const id of ids) this.states.set(id, fakeState(id));
     this.states.set(SP_ENTITY, spotifyState());
     this.states.set(SP_ENTITY_2, spotifyState(SP_ENTITY_2, 'Marjo'));
+    this.registries = mockRegistries();
+    for (const e of this.registries.entities) {
+      const s = this.states.get(e.entity_id);
+      if (!s) continue;
+      if (e.name) s.attributes.friendly_name = e.name;
+      if (e.original_device_class) s.attributes.device_class = e.original_device_class;
+    }
     setTimeout(() => {
       this.connected = true;
       this.emit('states', this.states);
+      this.emit('registries', this.registries);
       this.emit('ready');
       this.log.info?.(`[mock] ${this.states.size} fake entities loaded`);
     }, 100);
@@ -300,6 +373,8 @@ export class MockHaClient extends EventEmitter {
   }
 
   getState(id) { return this.states.get(id) ?? null; }
+
+  async fetchRegistries() { return this.registries; }
 
   subscribeEvents(eventType, cb) { this.eventSubs.push({ eventType, cb }); return 'mock'; }
 
@@ -516,6 +591,16 @@ export class MockHaClient extends EventEmitter {
   }
 
   async send(msg) {
+    if (msg.type === 'config/auth/list') return structuredClone(MOCK_AUTH);
+    const reg = msg.type.match(/^config\/(area|device|entity|label)_registry\/list$/);
+    if (reg) return structuredClone(this.registries?.[{ area: 'areas', device: 'devices', entity: 'entities', label: 'labels' }[reg[1]]] ?? []);
+    if (msg.type === 'config/entity_registry/update') {
+      const e = this.registries.entities.find((x) => x.entity_id === msg.entity_id);
+      if (!e) throw new Error('Entity not found');
+      for (const k of ['area_id', 'labels', 'hidden_by', 'name']) if (k in msg) e[k] = msg[k];
+      setTimeout(() => this.emit('registries', this.registries), 50);
+      return { entity_entry: e };
+    }
     if (msg.type === 'media_player/browse_media') {
       const item = (title, id, canPlay, canExpand) => ({ title, media_content_id: id, media_content_type: canPlay ? 'track' : 'directory', can_play: canPlay, can_expand: canExpand });
       if (!msg.media_content_id !== !msg.media_content_type) throw new Error('media_content_type and media_content_id must be provided together');

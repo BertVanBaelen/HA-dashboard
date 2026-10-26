@@ -1,8 +1,10 @@
 <script>
   import { slide } from 'svelte/transition';
   import { flip } from 'svelte/animate';
-  import { ROOMS, DOOR_SENSORS, CAR_FLAGS, ALL_OFF, LIGHTS } from '$shared/config.js';
-  import { household, states, saveHousehold, action, name } from '../lib/api.js';
+  import { CAR_FLAGS, DEFAULT_COMFORT_TEMP } from '$shared/config.js';
+  import { household, states, topology, isAdmin, saveHousehold, action, name } from '../lib/api.js';
+  import { allClimates, allLights, allOpenings } from '../lib/rooms.js';
+  import LayoutEditor from './LayoutEditor.svelte';
   import Icon from '../components/Icon.svelte';
   import Toggle from '../components/Toggle.svelte';
   import Stepper from '../components/Stepper.svelte';
@@ -12,6 +14,10 @@
   const byDomain = (d) => Object.values($states).filter((s) => s.entity_id.startsWith(d + '.')).sort((a, b) => name(a).localeCompare(name(b)));
   const calendars = $derived(byDomain('calendar'));
   const todos = $derived(byDomain('todo'));
+  const ROOMS = $derived(allClimates($topology));
+  const LIGHTS = $derived(allLights($topology));
+  const OPENINGS = $derived(allOpenings($topology));
+  let layoutOpen = $state(false);
 
   function toggleIn(key, id, on) {
     const set = new Set($household[key]);
@@ -95,20 +101,26 @@
   {#each ROOMS as r (r.key)}
     <div class="spread">
       <span>{r.name}</span>
-      <div style="width:200px"><Stepper value={$household.comfort[r.key]} min={5} max={25} onchange={(v) => saveHousehold({ comfort: { ...$household.comfort, [r.key]: v } })} debounce={500} /></div>
+      <div style="width:200px"><Stepper value={$household.comfort[r.key] ?? DEFAULT_COMFORT_TEMP} min={5} max={25} onchange={(v) => saveHousehold({ comfort: { ...$household.comfort, [r.key]: v } })} debounce={500} /></div>
     </div>
   {/each}
 </div>
 
 <h4 class="section-title">Raam- en deursensoren</h4>
 <div class="group">
-  {#each DOOR_SENSORS as d (d.entity)}
+  {#each OPENINGS as d (d.entity)}
     <label class="field">
-      <span class="tiny faint">{d.entity}</span>
-      <input class="input" value={$household.sensorLabels[d.entity] ?? d.defaultLabel} onchange={(e) => saveHousehold({ sensorLabels: { ...$household.sensorLabels, [d.entity]: e.currentTarget.value } })} />
+      <span class="tiny faint">{d.entity} · {d.room}</span>
+      <input class="input" value={$household.sensorLabels[d.entity] ?? d.name} onchange={(e) => saveHousehold({ sensorLabels: { ...$household.sensorLabels, [d.entity]: e.currentTarget.value } })} />
     </label>
   {/each}
 </div>
+
+{#if $isAdmin}
+  <h4 class="section-title">Plattegrond <span class="faint">(beheerder)</span></h4>
+  <button class="preset add" onclick={() => (layoutOpen = true)}><Icon name="pencil" size={20} /><span>Plattegrond bewerken</span></button>
+  <p class="muted small" style="margin-top:8px">Welke lampen, sensoren en toestellen bij een kamer horen, stel je in Home Assistant in via Areas. Verbergen kan met het label dashboard_verbergen.</p>
+{/if}
 
 <h4 class="section-title">Radiozenders</h4>
 <div class="group list">
@@ -140,6 +152,10 @@
   <span>🌀 Ventilator</span>
   <span>🔥 Verwarming op afwezig: {ROOMS.map((r) => r.name).join(', ')}</span>
 </div>
+
+{#if $isAdmin}
+  <LayoutEditor bind:open={layoutOpen} />
+{/if}
 
 <Sheet bind:open={editorOpen} title={editing?.isNew ? 'Nieuwe preset' : 'Preset bewerken'}>
   {#if editing}

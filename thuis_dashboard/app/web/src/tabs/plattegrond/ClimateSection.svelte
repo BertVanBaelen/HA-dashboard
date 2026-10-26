@@ -6,7 +6,7 @@
   import Segmented from '../../components/Segmented.svelte';
   import { toNum, fmt } from './summary.js';
 
-  /** @type {{ room: typeof import('$shared/config.js').ROOMS[number] }} */
+  /** @type {{ room: import('../../lib/rooms.js').ClimateRoom }} */
   let { room } = $props();
 
   const c = $derived($states[room.climate]);
