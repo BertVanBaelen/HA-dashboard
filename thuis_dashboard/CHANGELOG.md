@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.3
+- Lampen met segmenten (bv. Govee Uplighter): enkel de hoofdlamp wordt getoond, de `…_segment_N`-lampen niet meer.
+  Scènes blijven beschikbaar via het palet-icoon van de hoofdlamp.
+- Schakelaars die bij een lamp horen (DreamView, muziekmodus, zij-/onderlicht, …) verschijnen niet meer als apparaat in de ruimte.
+
 ## 0.7.2
 - Huisje (huisweergave): bij 5 of meer ruimtes wordt het huis hoger zodat naam, temperatuur en
   pictogrammen per ruimte volledig zichtbaar blijven, ook op smalle gsm-schermen.

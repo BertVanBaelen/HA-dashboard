@@ -81,6 +81,11 @@ export function buildTopology({ areas = [], devices = [], entities = [], labels 
     byDevice.get(dev).push(id);
   }
   const siblings = (id) => (deviceOf(id) ? byDevice.get(deviceOf(id)) ?? [] : []);
+  const objectId = (id) => id.split('.')[1] ?? '';
+  // Lights with a main light on the same device (e.g. Govee "…_segment_3") are parts of that light.
+  const isPartLight = (id) => siblings(id).some((x) => x !== id && domainOf(x) === 'light' && visible(x) && objectId(id).startsWith(`${objectId(x)}_`));
+  // Switches on a lamp's device are lamp features (DreamView, music mode, …), not sockets.
+  const isLampFeature = (id) => siblings(id).some((x) => domainOf(x) === 'light' && visible(x));
 
   const rooms = Object.fromEntries(areas.map((a) => [a.area_id, emptyRoom()]));
   const unassigned = emptyRoom();
@@ -107,9 +112,11 @@ export function buildTopology({ areas = [], devices = [], entities = [], labels 
     const areaId = areaOf(id);
     const room = roomFor(areaId);
     if (domain === 'light') {
+      if (isPartLight(id)) continue;
       const scene = siblings(id).find((x) => domainOf(x) === 'select' && x.endsWith('_scene') && !regById.get(x)?.disabled_by) ?? null;
       room.lights.push({ entity: id, name: nameOf(id, areaId), sceneSelect: scene });
     } else if (domain === 'switch' || domain === 'script') {
+      if (domain === 'switch' && isLampFeature(id)) continue;
       const name = nameOf(id, areaId);
       room[domain === 'switch' ? 'switches' : 'scripts'].push({ entity: id, name, icon: guessIcon(domain, id, name) });
     } else if (domain === 'binary_sensor' && OPENING_CLASSES.includes(deviceClass(id))) {

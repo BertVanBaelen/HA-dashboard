@@ -23,8 +23,8 @@ const MOCK_DEVICES = {
   uplighter: ['slaapkamer', [
     ['light.uplighter_floor_lamp', { name: 'Uplighter' }],
     ['select.uplighter_floor_lamp_scene', { entity_category: 'config' }],
-    ...Array.from({ length: 8 }, (_, i) => [`light.uplighter_floor_lamp_segment_${i + 1}`, { hidden_by: 'user' }]),
-    ...['music_mode', 'dreamview', 'ripple_light', 'side_light', 'bottom_light'].map((s) => [`switch.uplighter_floor_lamp_${s}`, { entity_category: 'config' }]),
+    ...Array.from({ length: 8 }, (_, i) => [`light.uplighter_floor_lamp_segment_${i + 1}`]),
+    ...['music_mode', 'dreamview', 'ripple_light', 'side_light', 'bottom_light'].map((s) => [`switch.uplighter_floor_lamp_${s}`]),
   ]],
   bedroom_sensor: ['slaapkamer', [
     ['sensor.bedroom_sensor_kamer_temperature', { name: 'Temperatuur (kamer)' }],

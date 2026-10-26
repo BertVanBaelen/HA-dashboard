@@ -76,6 +76,25 @@ test('scene select from the same device, config category allowed', () => {
   assert.equal(topo().rooms.slaapkamer.lights[0].sceneSelect, 'select.uplighter_scene');
 });
 
+test('segment lights and feature switches of a lamp are hidden, the main light stays', () => {
+  const t = buildTopology({
+    areas,
+    devices: [{ id: 'govee', area_id: 'slaapkamer' }, { id: 'plug', area_id: 'slaapkamer' }],
+    entities: [
+      { entity_id: 'light.floor_lamp', device_id: 'govee' },
+      { entity_id: 'light.floor_lamp_segment_1', device_id: 'govee' },
+      { entity_id: 'light.floor_lamp_segment_2', device_id: 'govee' },
+      { entity_id: 'switch.floor_lamp_dreamview', device_id: 'govee' },
+      { entity_id: 'select.floor_lamp_scene', device_id: 'govee' },
+      { entity_id: 'switch.plug_socket_1', device_id: 'plug' },
+    ],
+  });
+  const r = t.rooms.slaapkamer;
+  assert.deepEqual(r.lights.map((l) => l.entity), ['light.floor_lamp']);
+  assert.equal(r.lights[0].sceneSelect, 'select.floor_lamp_scene');
+  assert.deepEqual(r.switches.map((s) => s.entity), ['switch.plug_socket_1']);
+});
+
 test('climate picks Tado helpers from the same device', () => {
   const t = topo();
   const c = t.rooms.living.climate;
