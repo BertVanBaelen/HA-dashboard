@@ -19,12 +19,15 @@
   const hasMore = $derived(supportsColor(s) || supportsTemp(s) || !!light.sceneSelect || (s?.attributes?.effect_list?.length ?? 0) > 0);
   let preview = $state(/** @type {number|null} */ (null));
   $effect(() => {
-    pct;
-    preview = null;
+    if (preview != null && Math.abs(pct - preview) <= 2) preview = null;
   });
 
   const power = (v) => callService('light', v ? 'turn_on' : 'turn_off', {}, light.entity).catch(() => {});
-  const bright = (v) => callService('light', 'turn_on', { brightness_pct: v }, light.entity).catch(() => {});
+  const bright = (v) => {
+    preview = v;
+    setTimeout(() => { if (preview === v) preview = null; }, 10000);
+    callService('light', 'turn_on', { brightness_pct: v }, light.entity).catch(() => (preview = null));
+  };
 </script>
 
 {#snippet dimmer()}

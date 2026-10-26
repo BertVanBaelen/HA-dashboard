@@ -3,17 +3,23 @@
   /** @type {{ value: number, step?: number, min?: number, max?: number, unit?: string, digits?: number, disabled?: boolean, onchange?: (v:number)=>void, debounce?: number }} */
   let { value, step = 0.5, min = -Infinity, max = Infinity, unit = '°', digits = 1, disabled = false, onchange, debounce = 900 } = $props();
   let local = $state(null);
+  // Last value sent; the chosen value stays visible until the entity reports it (or a timeout).
+  let sent = $state(null);
   let bump = $state(0);
   let timer;
   const shown = $derived(local ?? value);
+  $effect(() => {
+    if (sent != null && local === sent && value != null && Math.abs(value - sent) < step / 2 + 1e-6) local = sent = null;
+  });
   function change(d) {
     const next = Math.min(max, Math.max(min, Math.round(((shown ?? 0) + d) / step) * step));
     local = next;
     bump++;
     clearTimeout(timer);
     timer = setTimeout(() => {
+      sent = next;
       onchange?.(next);
-      setTimeout(() => (local = null), 1500);
+      setTimeout(() => { if (sent === next && local === next) local = sent = null; }, 10000);
     }, debounce);
   }
 </script>

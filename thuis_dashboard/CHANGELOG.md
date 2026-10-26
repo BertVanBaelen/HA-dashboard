@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.4
+- Helderheid, volume en doeltemperatuur springen niet meer even terug naar de oude waarde na het instellen:
+  de gekozen waarde blijft staan tot Home Assistant ze bevestigt (max. 10 s).
+
 ## 0.7.3
 - Lampen met segmenten (bv. Govee Uplighter): enkel de hoofdlamp wordt getoond, de `…_segment_N`-lampen niet meer.
   Scènes blijven beschikbaar via het palet-icoon van de hoofdlamp.

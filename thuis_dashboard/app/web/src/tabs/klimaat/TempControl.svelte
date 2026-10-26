@@ -58,11 +58,11 @@
     clearTimeout(timer);
     timer = undefined;
     if (local == null) return;
-    pendingUntil = Date.now() + 8000;
+    pendingUntil = Date.now() + 10000;
     onchange?.(local);
     setTimeout(() => {
       if (!timer && Date.now() >= pendingUntil - 50) local = null;
-    }, 8000);
+    }, 10000);
   }
 
   function commit(delay = debounce) {

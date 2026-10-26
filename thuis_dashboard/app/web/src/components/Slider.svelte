@@ -7,7 +7,23 @@
   let { value = 0, min = 0, max = 100, step = 1, disabled = false, color = '', track = '', onchange, oninput, label = '', format } = $props();
   let local = $state(0);
   let dragging = $state(false);
-  $effect(() => { if (!dragging) local = value; });
+  // Value sent on release; shown until the entity reports it (or a timeout), so the thumb doesn't jump back.
+  let held = $state(/** @type {number|null} */ (null));
+  $effect(() => {
+    if (dragging) return;
+    if (held != null) {
+      if (Math.abs(value - held) > step * 1.5) return;
+      held = null;
+    }
+    local = value;
+  });
+  function release() {
+    dragging = false;
+    const v = Number(local);
+    held = v;
+    setTimeout(() => { if (held === v) held = null; }, 10000);
+    onchange?.(v);
+  }
   const pct = $derived(((local - min) / (max - min || 1)) * 100);
 </script>
 
@@ -20,7 +36,7 @@
     bind:value={local}
     onpointerdown={() => (dragging = true)}
     oninput={() => { dragging = true; oninput?.(Number(local)); }}
-    onchange={() => { dragging = false; onchange?.(Number(local)); }}
+    onchange={release}
   />
 </div>
 
