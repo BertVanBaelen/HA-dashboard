@@ -52,6 +52,16 @@
   .temp { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; }
   .temp small { font-size: 0.68rem; font-weight: 600; color: var(--text-2); margin-left: 4px; }
   .compact .temp { font-size: 0.8rem; }
+  .compact .temp small { display: none; }
+  .compact .name { flex-shrink: 0; max-width: 60%; }
+  .compact .inds { flex-wrap: nowrap; min-width: 0; overflow: hidden; }
+
+  /* Small rooms on narrow phones (house view): tighter badge so everything stays visible. */
+  @container room (max-height: 74px) {
+    .badge:not(.compact) { padding: 3px 7px 4px; gap: 1px; border-radius: 11px; }
+    .badge:not(.compact) .temp { font-size: 0.86rem; }
+    .badge:not(.compact) .ind { height: 17px; min-width: 17px; }
+  }
   .inds { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; }
   .inds:empty { display: none; }
   .ind {

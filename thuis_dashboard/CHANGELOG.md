@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.2
+- Huisje (huisweergave): bij 5 of meer ruimtes wordt het huis hoger zodat naam, temperatuur en
+  pictogrammen per ruimte volledig zichtbaar blijven, ook op smalle gsm-schermen.
+
 ## 0.7.1
 - Plattegrond bewerken: nieuwe lijst **Koppelingen met Home Assistant** om elke ruimte op de plattegrond
   aan een HA-area te koppelen (of te ontkoppelen), met knop "Automatisch koppelen".

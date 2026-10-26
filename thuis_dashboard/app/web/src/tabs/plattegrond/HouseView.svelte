@@ -13,17 +13,23 @@
   let { rooms, sums, selectedId = null, onselect, describe } = $props();
 
   const VW = 360;
-  const VH = 320;
-  const WALL = { x: 36, y: 118, w: 288, h: 176 };
+  const BASE_H = 176;
   const PAD = 8;
   const GAP = 6;
+  // Minimum floor height so a full badge (name, temperature, indicators) fits.
+  const MIN_ROW = 80;
+
+  const rows = $derived(rooms.length > 1 ? Math.ceil(rooms.length / 2) : 1);
+  // The house grows taller when there are many floors; ground and tree move down with it.
+  const extra = $derived(Math.max(0, rows * MIN_ROW + GAP * (rows - 1) + PAD * 2 - BASE_H));
+  const VH = $derived(320 + extra);
+  const WALL = $derived({ x: 36, y: 118, w: 288, h: BASE_H + extra });
 
   // One or two rooms per floor; with an odd count the top floor gets a single, full-width room.
   const slots = $derived.by(() => {
     const n = rooms.length;
     if (!n) return [];
     const cols = n === 1 ? 1 : 2;
-    const rows = Math.ceil(n / cols);
     const firstFull = n > 1 && n % 2 === 1;
     const iw = WALL.w - PAD * 2;
     const rh = (WALL.h - PAD * 2 - GAP * (rows - 1)) / rows;
@@ -68,14 +74,16 @@
     {/if}
     <SolarSun cx={52} cy={46} id="hv-sun" labelGap={16} />
 
-    <path d="M0 296 Q 90 284 180 294 T {VW} 292 V{VH} H0Z" class="ground" />
-    <g class="tree">
-      <rect x="14" y="262" width="4" height="34" rx="2" class="trunk" />
-      <circle cx="16" cy="256" r="11" class="leaf" />
-      <circle cx="10" cy="266" r="7" class="leaf" />
-      <circle cx="23" cy="265" r="7" class="leaf" />
+    <g transform="translate(0 {extra})">
+      <path d="M0 296 Q 90 284 180 294 T {VW} 292 V320 H0Z" class="ground" />
+      <g class="tree">
+        <rect x="14" y="262" width="4" height="34" rx="2" class="trunk" />
+        <circle cx="16" cy="256" r="11" class="leaf" />
+        <circle cx="10" cy="266" r="7" class="leaf" />
+        <circle cx="23" cy="265" r="7" class="leaf" />
+      </g>
+      <circle cx="340" cy="288" r="8" class="leaf" />
     </g>
-    <circle cx="340" cy="288" r="8" class="leaf" />
 
     <rect x="258" y="44" width="18" height="60" rx="2" class="chimney" />
     {#if anyHeating}
@@ -140,6 +148,7 @@
 
   .room {
     position: absolute; z-index: 0; display: grid; place-items: center; padding: 3px; margin: 0; cursor: pointer; overflow: hidden;
+    container: room / size;
     background: color-mix(in srgb, #7dd3fc 14%, var(--surface-2)); color: var(--text);
     border: 2px solid color-mix(in srgb, var(--text-3) 35%, transparent); border-radius: 8px;
     box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--surface-solid) 55%, transparent);
