@@ -2,6 +2,7 @@
   import { FLOOR_TYPES } from '$shared/config.js';
   import { validateLayout, overlappingRooms, doorGeometry, ROOM_ICON_KEYS, MAX_ROOMS } from '$shared/layout.js';
   import { defaultLayout } from '$shared/default-layout.js';
+  import { matchArea, autoLinkRooms } from '$shared/area-match.js';
   import { household, topology, saveLayout, toast } from '../lib/api.js';
   import { ROOM_ICONS } from '../tabs/plattegrond/icons.js';
   import Icon from '../components/Icon.svelte';
@@ -66,12 +67,33 @@
   const center = () => [snap(draft.viewBox[0] + draft.viewBox[2] / 2), snap(draft.viewBox[1] + draft.viewBox[3] / 2)];
 
   function addRoom(areaId) {
+    const area = areaId ? areas.find((a) => a.id === areaId) : null;
+    // An existing drawing-only room with the same name gets linked instead of drawing a new one
+    const existing = area && draft.rooms.find((r) => !r.areaId && r.name && matchArea([area], r.id, r.name));
+    if (existing) {
+      existing.areaId = area.id;
+      sel = { kind: 'room', id: existing.id };
+      return toast(`"${existing.name}" gekoppeld aan ${area.name}`);
+    }
     if (draft.rooms.length >= MAX_ROOMS) return toast(`Maximaal ${MAX_ROOMS} ruimtes`, 'error');
     const [cx, cy] = center();
     const id = areaId && !draft.rooms.some((r) => r.id === areaId) && /^[\w-]{1,40}$/.test(areaId) ? areaId : newId('r', draft.rooms);
-    const icon = ROOM_ICON_KEYS.includes(areas.find((a) => a.id === areaId)?.icon) ? areas.find((a) => a.id === areaId).icon : 'home';
+    const icon = ROOM_ICON_KEYS.includes(area?.icon) ? area.icon : 'home';
     draft.rooms.push({ id, areaId: areaId || null, name: areaId ? '' : 'Nieuwe ruimte', icon, rect: [cx - 30, cy - 30, 60, 60], floor: 'plain', furniture: null });
     sel = { kind: 'room', id };
+  }
+  function autoLink() {
+    const before = draft.rooms.filter((r) => r.areaId).length;
+    draft.rooms = autoLinkRooms(draft.rooms, areas);
+    const n = draft.rooms.filter((r) => r.areaId).length - before;
+    toast(n ? `${n} ruimte${n > 1 ? 's' : ''} gekoppeld` : 'Geen ruimtes gevonden om automatisch te koppelen');
+  }
+  /** Name of the room on the drawing itself (independent of the linked area). */
+  const planName = (r) => r.name || (r.areaId ? areaName(r.areaId) : 'Tekening zonder naam');
+  const linkable = $derived((draft?.rooms ?? []).filter((r) => r.name || r.areaId));
+  function setArea(room, value) {
+    if (!value && room.areaId && !room.name) room.name = areaName(room.areaId);
+    room.areaId = value || null;
   }
   function addDoor() {
     const [cx, cy] = center();
@@ -94,13 +116,7 @@
   function reset() {
     if (!confirm('De standaard plattegrond terugzetten? Je wijzigingen gaan verloren.')) return;
     const l = defaultLayout();
-    const norm = (s) => String(s ?? '').toLowerCase().replace(/[\s_-]+/g, ' ');
-    const taken = new Set();
-    for (const r of l.rooms) {
-      if (!r.name) continue;
-      const a = areas.find((x) => !taken.has(x.id) && (norm(x.id) === norm(r.id) || norm(x.name) === norm(r.name)));
-      if (a) taken.add((r.areaId = a.id));
-    }
+    l.rooms = autoLinkRooms(l.rooms, areas);
     draft = l;
     sel = null;
   }
@@ -152,7 +168,7 @@
   }
   const end = () => (drag = null);
 
-  const roomLabel = (r) => (r.areaId ? areaName(r.areaId) : r.name || 'Tekening');
+  const roomLabel = (r) => (r.areaId ? areaName(r.areaId) : r.name || '');
   const numInput = (obj, key, i = null) => (e) => {
     const v = Number(e.currentTarget.value);
     if (!Number.isFinite(v)) return;
@@ -194,7 +210,7 @@
           {#each draft.rooms as r (r.id)}
             {@const on = sel?.kind === 'room' && sel.id === r.id}
             <g class="item" class:on>
-              <rect x={r.rect[0]} y={r.rect[1]} width={r.rect[2]} height={r.rect[3]} class="hit" role="button" tabindex="-1" aria-label={roomLabel(r)} onpointerdown={(e) => startDrag(e, 'room', r.id)} />
+              <rect x={r.rect[0]} y={r.rect[1]} width={r.rect[2]} height={r.rect[3]} class="hit" role="button" tabindex="-1" aria-label={roomLabel(r) || 'Tekening'} onpointerdown={(e) => startDrag(e, 'room', r.id)} />
               <text x={r.rect[0] + r.rect[2] / 2} y={r.rect[1] + r.rect[3] / 2} class="lbl">{roomLabel(r)}</text>
               {#if on}<rect x={r.rect[0] + r.rect[2] - 6} y={r.rect[1] + r.rect[3] - 6} width="10" height="10" class="handle" role="button" tabindex="-1" aria-label="Grootte" onpointerdown={(e) => startDrag(e, 'room', r.id, 'resize')} />{/if}
             </g>
@@ -222,7 +238,7 @@
           <p class="muted small">Tik een ruimte, deur of raam om te bewerken. Sleep om te verplaatsen, sleep het hoekje om de grootte te wijzigen.</p>
         {:else if sel?.kind === 'room'}
           <label class="field">Ruimte in Home Assistant
-            <select class="input" value={selected.areaId ?? ''} onchange={(e) => (selected.areaId = e.currentTarget.value || null)}>
+            <select class="input" value={selected.areaId ?? ''} onchange={(e) => setArea(selected, e.currentTarget.value)}>
               <option value="">Geen – enkel tekening</option>
               {#each areas.filter((a) => a.id === selected.areaId || !placedAreas.has(a.id)) as a (a.id)}<option value={a.id}>{a.name}</option>{/each}
             </select>
@@ -274,6 +290,23 @@
 
       {#if error}<p class="msg err small">{error}</p>{/if}
       {#each warnings as w (w)}<p class="msg warn small">{w}</p>{/each}
+
+      <section class="links">
+        <div class="row links-head">
+          <h4 class="grow">Koppelingen met Home Assistant</h4>
+          <button class="btn soft sm" onclick={autoLink}>Automatisch koppelen</button>
+        </div>
+        <p class="muted tiny">Kies per ruimte op de plattegrond de ruimte (area) uit Home Assistant. De toestellen van die area verschijnen dan in deze ruimte.</p>
+        {#each linkable as r (r.id)}
+          <div class="link-row" class:on={sel?.kind === 'room' && sel.id === r.id}>
+            <button class="link-name ellipsis" title="Selecteer op de tekening" onclick={() => (sel = { kind: 'room', id: r.id })}>{planName(r)}</button>
+            <select class="input sm" class:unlinked={!r.areaId} aria-label="Area voor {planName(r)}" value={r.areaId ?? ''} onchange={(e) => setArea(r, e.currentTarget.value)}>
+              <option value="">Niet gekoppeld</option>
+              {#each areas.filter((a) => a.id === r.areaId || !placedAreas.has(a.id)) as a (a.id)}<option value={a.id}>{a.name}</option>{/each}
+            </select>
+          </div>
+        {/each}
+      </section>
     </div>
   {/if}
   {#snippet footer()}
@@ -286,6 +319,14 @@
 
 <style>
   .editor { display: flex; flex-direction: column; gap: 12px; }
+  .links { display: flex; flex-direction: column; gap: 6px; }
+  .links h4 { margin: 0; font-size: 0.95rem; }
+  .links p { margin: 0 0 4px; }
+  .links-head { gap: 8px; }
+  .link-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); align-items: center; gap: 8px; padding: 4px 6px; border-radius: 10px; }
+  .link-row.on { background: var(--accent-soft); }
+  .link-name { text-align: left; background: none; border: 0; padding: 4px 0; color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+  .link-row select.unlinked { color: var(--text-3); border-style: dashed; }
   .tools { flex-wrap: wrap; gap: 8px; }
   .tools label { gap: 6px; }
   .input.sm { width: auto; padding: 6px 10px; }

@@ -2,7 +2,7 @@ import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { TABS, DEFAULT_RADIOS, CAR_FLAGS, NEWS_SOURCES } from '../shared/config.js';
 import { validateLayout } from '../shared/layout.js';
-import { defaultLayout, linkLayout, rekeyComfort, LEGACY_PRESETS, LEGACY_COMFORT, LEGACY_SENSOR_LABELS } from './migrate-layout.js';
+import { defaultLayout, linkLayout, rekeyComfort, LINK_REV, LEGACY_PRESETS, LEGACY_COMFORT, LEGACY_SENSOR_LABELS } from './migrate-layout.js';
 
 const SCHEMA_VERSION = 2;
 const NEWS_DISMISS_DAYS = 4;
@@ -68,7 +68,7 @@ function normalizeUser(p) {
 function normalizeLayout(l, log) {
   if (!l) return defaultLayout();
   try {
-    return { ...validateLayout(l), linked: l.linked !== false };
+    return { ...validateLayout(l), linked: l.linked !== false, ...(Number(l.linkRev) ? { linkRev: Number(l.linkRev) } : {}) };
   } catch (err) {
     log?.warn?.('[store] invalid layout, using default', err.message);
     return defaultLayout();
@@ -171,7 +171,7 @@ export class Store {
   }
 
   async setLayout(layout) {
-    this.data.household = { ...this.data.household, layout: validateLayout(layout) };
+    this.data.household = { ...this.data.household, layout: { ...validateLayout(layout), linkRev: LINK_REV } };
     await this.save();
     return this.data.household;
   }

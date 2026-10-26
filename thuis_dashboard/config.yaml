@@ -1,5 +1,5 @@
 name: Thuis Dashboard
-version: "0.7.0"
+version: "0.7.1"
 slug: thuis_dashboard
 description: Mobiel dashboard voor ons huis – tabs per onderwerp, per gebruiker instelbaar.
 url: https://github.com/BertVanBaelen/HA-dashboard

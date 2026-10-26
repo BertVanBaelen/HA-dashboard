@@ -26,10 +26,25 @@ async function withStore(raw, fn) {
 }
 
 test('matchArea matches id or name, ignoring case and separators', () => {
-  assert.equal(matchArea(AREAS, 'mistique')?.area_id, undefined);
+  assert.equal(matchArea(AREAS, 'mistique').area_id, 'mistique_kamer');
   assert.equal(matchArea(AREAS, 'mistique', 'Mistique kamer').area_id, 'mistique_kamer');
   assert.equal(matchArea(AREAS, 'badkamer').area_id, 'bad');
   assert.equal(matchArea(AREAS, 'zolder'), null);
+});
+
+test('matchArea matches partial names only when unique', () => {
+  const areas = [{ area_id: 'living_room', name: 'Living room' }, { area_id: 'kamer_1', name: 'Kamer 1' }, { area_id: 'kamer_2', name: 'Kamer 2' }];
+  assert.equal(matchArea(areas, 'living').area_id, 'living_room');
+  assert.equal(matchArea(areas, 'r7', 'Living').area_id, 'living_room');
+  assert.equal(matchArea(areas, 'kamer'), null);
+});
+
+test('linkLayout runs once more for layouts linked by an older version', () => {
+  const old = { ...defaultLayout(), linked: true };
+  const l = linkLayout(old, [{ area_id: 'living_room', name: 'Living room' }]);
+  assert.equal(l.rooms.find((r) => r.id === 'living').areaId, 'living_room');
+  assert.equal(l.linkRev, 2);
+  assert.equal(linkLayout(l, [{ area_id: 'hall', name: 'Hall' }]), l);
 });
 
 test('linkLayout links named rooms once and leaves drawings alone', () => {
@@ -110,5 +125,6 @@ test('setHousehold never overwrites the layout, setLayout validates', async () =
     await s.setLayout({ viewBox: [0, 0, 200, 200], rooms: [{ id: 'a', areaId: 'living', rect: [0, 0, 50, 50] }] });
     assert.equal(s.getHousehold().layout.rooms.length, 1);
     assert.equal(s.getHousehold().layout.linked, true);
+    assert.equal(s.getHousehold().layout.linkRev, 2);
   });
 });

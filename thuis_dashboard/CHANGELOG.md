@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1
+- Plattegrond bewerken: nieuwe lijst **Koppelingen met Home Assistant** om elke ruimte op de plattegrond
+  aan een HA-area te koppelen (of te ontkoppelen), met knop "Automatisch koppelen".
+- "+ Ruimte" koppelt een bestaande, nog niet gekoppelde ruimte met dezelfde naam in plaats van een nieuwe te tekenen.
+- Automatisch koppelen herkent ook gedeeltelijke namen (bv. "Living" ↔ "Living room") en wordt na de update één keer opnieuw uitgevoerd.
+
 ## 0.7.0
 - Kamers komen nu uit de **Areas van Home Assistant**: lampen, schakelaars, scripts, sensoren, ramen/deuren,
   verwarming en de plaats van TV/stereo/soundbar volgen de area van de entiteit (of van het toestel).

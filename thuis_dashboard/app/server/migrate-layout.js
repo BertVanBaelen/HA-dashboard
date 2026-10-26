@@ -1,25 +1,15 @@
+import { matchArea, autoLinkRooms } from '../shared/area-match.js';
+
 export { defaultLayout } from '../shared/default-layout.js';
+export { matchArea };
 
-const norm = (s) => String(s ?? '').trim().toLowerCase().replace(/[\s_-]+/g, ' ');
-
-/** Area that matches a legacy room key or name (case-insensitive). */
-export function matchArea(areas, ...keys) {
-  const wanted = keys.filter(Boolean).map(norm);
-  return areas.find((a) => wanted.includes(norm(a.area_id ?? a.id))) ?? areas.find((a) => wanted.includes(norm(a.name))) ?? null;
-}
+/** Bump to run the automatic linking once more on existing installs (2: also matches "Living" ↔ "Living room"). */
+export const LINK_REV = 2;
 
 /** Links unlinked layout rooms to HA areas by id/name. Returns a new layout (marked linked). */
 export function linkLayout(layout, areas) {
-  if (!layout || layout.linked || !areas?.length) return layout;
-  const taken = new Set(layout.rooms.map((r) => r.areaId).filter(Boolean));
-  const rooms = layout.rooms.map((r) => {
-    if (r.areaId || !r.name) return r;
-    const a = matchArea(areas.filter((x) => !taken.has(x.area_id ?? x.id)), r.id, r.name);
-    if (!a) return r;
-    taken.add(a.area_id ?? a.id);
-    return { ...r, areaId: a.area_id ?? a.id };
-  });
-  return { ...layout, rooms, linked: true };
+  if (!layout || (layout.linked && (layout.linkRev ?? 1) >= LINK_REV) || !areas?.length) return layout;
+  return { ...layout, rooms: autoLinkRooms(layout.rooms, areas), linked: true, linkRev: LINK_REV };
 }
 
 /** Comfort temperatures keyed by legacy room key → keyed by area id. Keys that already are area ids stay. */
