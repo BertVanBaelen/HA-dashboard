@@ -130,8 +130,9 @@ function broadcast(msg, filter = () => true) {
 }
 
 function onClient(ws, user) {
-  const client = { ws, user };
+  const client = { ws, user, alive: true };
   clients.add(client);
+  ws.on('pong', () => (client.alive = true));
   log.info(`[ws] ${user.displayName} connected (${clients.size} client(s))`);
   store.setProfile(user.id, { displayName: user.displayName, person: actions.personForUser(user.id) });
   send(ws, {
@@ -161,6 +162,23 @@ function onClient(ws, user) {
   });
   ws.on('close', () => clients.delete(client));
 }
+
+// Keeps proxies (HA ingress) from closing idle sockets and drops clients that vanished without closing.
+setInterval(() => {
+  for (const c of clients) {
+    if (!c.alive) {
+      clients.delete(c);
+      c.ws.terminate();
+      continue;
+    }
+    c.alive = false;
+    try {
+      c.ws.ping();
+    } catch {
+      /* closed meanwhile */
+    }
+  }
+}, 30000).unref();
 
 function checkService(domain, service, target, data) {
   const allowed = ALLOWED_SERVICES[domain];

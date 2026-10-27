@@ -2,7 +2,7 @@
   import { fly, fade, scale } from 'svelte/transition';
   import { cubicOut } from 'svelte/easing';
   import { TABS } from '$shared/config.js';
-  import { ready, prefs, connection, haConnected, isMock, user } from './lib/api.js';
+  import { ready, prefs, connection, haConnected, isMock, user, reconnect } from './lib/api.js';
   import { tabLoaders } from './tabs/index.js';
   import Icon from './components/Icon.svelte';
   import Sheet from './components/Sheet.svelte';
@@ -98,6 +98,13 @@
   }
 
   const status = $derived($connection !== 'open' ? 'offline' : !$haConnected ? 'ha' : 'ok');
+
+  /** Manual refresh: reconnect (fresh states) and remount the current tab so it reloads its data. */
+  let refreshes = $state(0);
+  function refresh() {
+    reconnect();
+    refreshes++;
+  }
 </script>
 
 <svelte:window onresize={() => (wide = window.innerWidth >= 768)} onscroll={() => (scrolled = window.scrollY > 8)} />
@@ -112,6 +119,9 @@
   <div class="splash" out:fade={{ duration: 300 }}>
     <div class="logo pulse"><Icon name="home" size={42} /></div>
     <div class="muted">{$connection === 'closed' ? 'Verbinding maken…' : 'Laden…'}</div>
+    {#if $connection === 'closed'}
+      <button class="btn" onclick={reconnect}><Icon name="refresh" size={18} /> Opnieuw proberen</button>
+    {/if}
   </div>
 {:else}
   <div class="shell" class:wide in:fade={{ duration: 400 }}>
@@ -126,9 +136,14 @@
             {$user?.displayName}{#if $isMock} · <span class="gradient-text">demo</span>{/if}
           </div>
         </div>
-        <button class="btn icon gear" onclick={() => (settingsOpen = true)} aria-label="Instellingen">
-          <Icon name="settings" size={24} />
-        </button>
+        <div class="actions">
+          <button class="btn icon round" class:spin={$connection === 'connecting'} onclick={refresh} aria-label="Vernieuwen" title="Vernieuwen">
+            <Icon name="refresh" size={22} />
+          </button>
+          <button class="btn icon round gear" onclick={() => (settingsOpen = true)} aria-label="Instellingen">
+            <Icon name="settings" size={24} />
+          </button>
+        </div>
       </div>
 
       {#if wide}
@@ -143,10 +158,11 @@
     </header>
 
     {#if status !== 'ok'}
-      <div class="banner" transition:fly={{ y: -20, duration: 300 }}>
+      <button class="banner" onclick={refresh} transition:fly={{ y: -20, duration: 300 }}>
         <Icon name="wifiOff" size={18} />
         {status === 'offline' ? 'Verbinding verbroken… opnieuw verbinden' : 'Home Assistant is niet bereikbaar'}
-      </div>
+        <Icon name="refresh" size={18} />
+      </button>
     {/if}
 
     <main ontouchstart={onTouchStart} ontouchend={onTouchEnd}>
@@ -156,7 +172,7 @@
           <button class="btn primary" onclick={() => (settingsOpen = true)}>Instellingen openen</button>
         </div>
       {:else if current}
-        {#key current}
+        {#key `${current}|${refreshes}`}
           <div class="page" in:fly={{ x: 40 * direction, duration: 420, easing: cubicOut }}>
             {#await tabLoaders[current]()}
               <div class="loading"><div class="skeleton" style="height:120px"></div><div class="skeleton" style="height:200px"></div></div>
@@ -226,7 +242,10 @@
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); --pulse: var(--ok); }
   .dot.offline { background: var(--danger); --pulse: var(--danger); }
   .dot.ha { background: var(--warn); --pulse: var(--warn); }
-  .gear { width: 46px; height: 46px; background: var(--surface); border: 1px solid var(--border); backdrop-filter: blur(12px); }
+  .actions { display: flex; gap: 8px; }
+  .round { width: 46px; height: 46px; background: var(--surface); border: 1px solid var(--border); backdrop-filter: blur(12px); }
+  .spin :global(svg) { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .gear :global(svg) { transition: transform 0.7s var(--spring); }
   .gear:hover :global(svg), .gear:active :global(svg) { transform: rotate(120deg); }
 
@@ -235,7 +254,7 @@
   .toptabs button:hover { background: var(--surface-2); color: var(--text); }
   .toptabs button.active { background: var(--gradient); color: #fff; box-shadow: 0 6px 18px -6px var(--accent); }
 
-  .banner { position: sticky; top: calc(86px + var(--safe-top)); z-index: 19; margin: 0 auto 8px; width: fit-content; display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: color-mix(in srgb, var(--danger) 18%, var(--surface-solid)); color: var(--danger); font-weight: 600; font-size: 0.85rem; box-shadow: var(--shadow); }
+  .banner { position: sticky; top: calc(86px + var(--safe-top)); z-index: 19; margin: 0 auto 8px; width: fit-content; display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: color-mix(in srgb, var(--danger) 18%, var(--surface-solid)); color: var(--danger); font-weight: 600; font-size: 0.85rem; box-shadow: var(--shadow); border: 0; font-family: inherit; cursor: pointer; }
 
   main { max-width: 1200px; margin: 0 auto; padding: 6px 14px 0; min-height: 60vh; }
   .page { will-change: transform, opacity; }

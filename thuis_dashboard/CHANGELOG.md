@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.5
+- Verbinding na het heropenen van de app: de app controleert de verbinding meteen bij terugkeren
+  naar de voorgrond en verbindt direct opnieuw als ze weggevallen is (in plaats van tot 10 s te wachten
+  of op een "dode" verbinding te blijven hangen). Acties wachten even op de nieuwe verbinding i.p.v. meteen te falen.
+- Nieuwe knop **Vernieuwen** (↻) naast Instellingen: verbindt opnieuw en herlaadt het huidige tabblad.
+  Ook de melding "Verbinding verbroken" en het laadscherm zijn aantikbaar om opnieuw te proberen.
+- De server stuurt elke 30 s een heartbeat zodat de ingress-proxy de verbinding niet als inactief afsluit.
+- Buienradar toont nu ook de **verwachting voor de komende 2 uur** (bron: Buienradar, Benelux; daarbuiten blijft
+  RainViewer met enkel het verleden). Op de tijdlijn staat een "Nu"-markering, het toekomstige deel is gearceerd
+  en op de kaart verschijnt "Verwachting +… min" zolang je een voorspeld beeld bekijkt.
+
 ## 0.7.4
 - Helderheid, volume en doeltemperatuur springen niet meer even terug naar de oude waarde na het instellen:
   de gekozen waarde blijft staan tot Home Assistant ze bevestigt (max. 10 s).

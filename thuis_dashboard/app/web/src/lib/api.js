@@ -18,11 +18,20 @@ export const household = writable(/** @type {any} */ (null));
 export const others = writable(/** @type {{id:string,displayName:string,person:string|null,calendars:string[]}[]} */ ([]));
 export const toasts = writable(/** @type {{id:number,text:string,kind:string}[]} */ ([]));
 
-let ws;
+/** @type {WebSocket|null} */
+let ws = null;
 let seq = 1;
 const pending = new Map();
 let retry = 500;
+let retryTimer = null;
+let connectTimer = null;
+let checking = null;
+const openWaiters = new Set();
 const listeners = new Set();
+
+const CONNECT_TIMEOUT = 10000;
+const PING_TIMEOUT = 5000;
+const HEARTBEAT = 25000;
 
 function wsUrl() {
   const u = new URL(location.href);
@@ -34,76 +43,171 @@ function wsUrl() {
 }
 
 export function connect() {
+  abandon();
+  clearTimeout(retryTimer);
+  retryTimer = null;
   connection.set('connecting');
-  ws = new WebSocket(wsUrl());
-  ws.onopen = () => {
+  const sock = new WebSocket(wsUrl());
+  ws = sock;
+  connectTimer = setTimeout(() => {
+    if (ws === sock && sock.readyState === WebSocket.CONNECTING) {
+      abandon();
+      lost();
+    }
+  }, CONNECT_TIMEOUT);
+  sock.onopen = () => {
+    if (ws !== sock) return;
+    clearTimeout(connectTimer);
     connection.set('open');
     retry = 500;
+    for (const w of openWaiters) w.resolve();
+    openWaiters.clear();
   };
-  ws.onclose = () => {
-    connection.set('closed');
-    for (const [, p] of pending) p.reject(new Error('Verbinding verbroken'));
-    pending.clear();
-    setTimeout(connect, retry);
-    retry = Math.min(retry * 2, 10000);
+  sock.onclose = () => {
+    if (ws !== sock) return;
+    ws = null;
+    clearTimeout(connectTimer);
+    lost();
   };
-  ws.onmessage = (ev) => {
-    const msg = JSON.parse(ev.data);
-    switch (msg.type) {
-      case 'init':
-        user.set(msg.user);
-        prefs.set(msg.prefs);
-        household.set(msg.household);
-        if (msg.topology) topology.set(msg.topology);
-        others.set(msg.others ?? []);
-        states.set(msg.states);
-        haConnected.set(msg.haConnected);
-        isMock.set(!!msg.mock);
-        ready.set(true);
-        break;
-      case 'states':
-        states.update((s) => {
-          const next = { ...s };
-          for (const [id, st] of Object.entries(msg.changes)) {
-            if (st) next[id] = st;
-            else delete next[id];
-          }
-          return next;
-        });
-        for (const l of listeners) l(msg.changes);
-        break;
-      case 'state_reset':
-        states.set(msg.states);
-        break;
-      case 'ha':
-        haConnected.set(msg.connected);
-        break;
-      case 'prefs':
-        prefs.set(msg.prefs);
-        break;
-      case 'household':
-        household.set(msg.household);
-        break;
-      case 'topology':
-        topology.set(msg.topology);
-        break;
-      case 'others':
-        others.set(msg.others ?? []);
-        break;
-      case 'result': {
-        const p = pending.get(msg.id);
-        if (!p) return;
-        pending.delete(msg.id);
-        msg.ok ? p.resolve(msg.result) : p.reject(new Error(msg.error));
-        break;
-      }
-    }
+  sock.onmessage = (ev) => {
+    if (ws === sock) onMessage(JSON.parse(ev.data));
   };
 }
 
-function request(payload, timeout = 70000) {
+/** Detach and close the current socket without triggering the retry logic. */
+function abandon() {
+  clearTimeout(connectTimer);
+  if (!ws) return;
+  const sock = ws;
+  ws = null;
+  sock.onopen = sock.onclose = sock.onmessage = null;
+  try {
+    sock.close();
+  } catch {
+    /* ignore */
+  }
+}
+
+function failPending(text) {
+  for (const [, p] of pending) p.reject(new Error(text));
+  pending.clear();
+}
+
+function lost() {
+  connection.set('closed');
+  failPending('Verbinding verbroken');
+  clearTimeout(retryTimer);
+  retryTimer = setTimeout(connect, retry);
+  retry = Math.min(retry * 2, 10000);
+}
+
+/** Drop the current socket and connect again right away (fresh `init` with all states). */
+export function reconnect() {
+  abandon();
+  failPending('Verbinding verbroken');
+  retry = 500;
+  connect();
+}
+
+/**
+ * Verify the connection is really alive. Mobile apps that were in the background often keep a
+ * socket that looks open but is dead, so ping it and reconnect when there is no answer.
+ */
+export function checkConnection() {
+  if (!ws || ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) return reconnect();
+  if (ws.readyState === WebSocket.CONNECTING || checking) return;
+  const sock = ws;
+  checking = send({ type: 'ping' }, PING_TIMEOUT)
+    .catch(() => {
+      if (ws === sock) reconnect();
+    })
+    .finally(() => (checking = null));
+}
+
+if (typeof window !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) checkConnection();
+  });
+  window.addEventListener('pageshow', () => checkConnection());
+  window.addEventListener('online', () => checkConnection());
+  window.addEventListener('focus', () => checkConnection());
+  setInterval(() => {
+    if (!document.hidden && ws?.readyState === WebSocket.OPEN) checkConnection();
+  }, HEARTBEAT);
+}
+
+function onMessage(msg) {
+  switch (msg.type) {
+    case 'init':
+      user.set(msg.user);
+      prefs.set(msg.prefs);
+      household.set(msg.household);
+      if (msg.topology) topology.set(msg.topology);
+      others.set(msg.others ?? []);
+      states.set(msg.states);
+      haConnected.set(msg.haConnected);
+      isMock.set(!!msg.mock);
+      ready.set(true);
+      break;
+    case 'states':
+      states.update((s) => {
+        const next = { ...s };
+        for (const [id, st] of Object.entries(msg.changes)) {
+          if (st) next[id] = st;
+          else delete next[id];
+        }
+        return next;
+      });
+      for (const l of listeners) l(msg.changes);
+      break;
+    case 'state_reset':
+      states.set(msg.states);
+      break;
+    case 'ha':
+      haConnected.set(msg.connected);
+      break;
+    case 'prefs':
+      prefs.set(msg.prefs);
+      break;
+    case 'household':
+      household.set(msg.household);
+      break;
+    case 'topology':
+      topology.set(msg.topology);
+      break;
+    case 'others':
+      others.set(msg.others ?? []);
+      break;
+    case 'result': {
+      const p = pending.get(msg.id);
+      if (!p) return;
+      pending.delete(msg.id);
+      msg.ok ? p.resolve(msg.result) : p.reject(new Error(msg.error));
+      break;
+    }
+  }
+}
+
+/** Resolves once the socket is open; starts a reconnect if there is no socket at all. */
+function whenOpen(ms) {
+  if (ws?.readyState === WebSocket.OPEN) return Promise.resolve();
+  if (!ws || ws.readyState !== WebSocket.CONNECTING) reconnect();
   return new Promise((resolve, reject) => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return reject(new Error('Geen verbinding'));
+    const w = {
+      resolve: () => (clearTimeout(timer), resolve()),
+    };
+    const timer = setTimeout(() => {
+      openWaiters.delete(w);
+      reject(new Error('Geen verbinding'));
+    }, ms);
+    openWaiters.add(w);
+  });
+}
+
+/** Send a request over the current socket and wait for its result. */
+function send(payload, timeout) {
+  return new Promise((resolve, reject) => {
+    if (ws?.readyState !== WebSocket.OPEN) return reject(new Error('Geen verbinding'));
     const id = seq++;
     const timer = setTimeout(() => {
       pending.delete(id);
@@ -115,6 +219,11 @@ function request(payload, timeout = 70000) {
     });
     ws.send(JSON.stringify({ ...payload, id }));
   });
+}
+
+async function request(payload, timeout = 70000) {
+  await whenOpen(CONNECT_TIMEOUT);
+  return send(payload, timeout);
 }
 
 /** Subscribe to raw state change batches: cb(changes: Record<id, state|null>). */
