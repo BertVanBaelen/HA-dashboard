@@ -108,16 +108,29 @@ function publicStates() {
 }
 
 const clients = new Set();
-const wss = new WebSocketServer({ noServer: true });
+// Compression is never wanted behind the ingress proxy; be explicit so it can't be negotiated.
+const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
 
-server.on('upgrade', (req, socket, head) => {
+server.on('upgrade', async (req, socket, head) => {
   if (!remoteAllowed(req) || !new URL(req.url, 'http://x').pathname.endsWith('/ws')) return socket.destroy();
   const user = userFromRequest(req);
   if (!user) {
     socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
     return socket.destroy();
   }
-  admin.isAdmin(user).catch(() => false).then((isAdmin) => wss.handleUpgrade(req, socket, head, (ws) => onClient(ws, { ...user, isAdmin })));
+  // Node drops its own error handler on upgrade requests: a reset during the admin check would otherwise crash the server.
+  const onSocketError = () => socket.destroy();
+  socket.on('error', onSocketError);
+  try {
+    const isAdmin = await admin.isAdmin(user).catch(() => false);
+    socket.off('error', onSocketError);
+    // The proxy or browser may have given up while we waited.
+    if (socket.destroyed || !socket.writable) return socket.destroy();
+    wss.handleUpgrade(req, socket, head, (ws) => onClient(ws, { ...user, isAdmin }));
+  } catch (err) {
+    log.error('[ws] upgrade failed', err);
+    socket.destroy();
+  }
 });
 
 function send(ws, msg) {
@@ -131,7 +144,10 @@ function broadcast(msg, filter = () => true) {
 
 function onClient(ws, user) {
   const client = { ws, user, alive: true };
+  const since = Date.now();
   clients.add(client);
+  // Without an error listener a bad frame or reset would throw and take the whole server down.
+  ws.on('error', (err) => log.warn(`[ws] ${user.displayName} socket error`, err.message));
   ws.on('pong', () => (client.alive = true));
   log.info(`[ws] ${user.displayName} connected (${clients.size} client(s))`);
   store.setProfile(user.id, { displayName: user.displayName, person: actions.personForUser(user.id) });
@@ -160,7 +176,10 @@ function onClient(ws, user) {
       send(ws, { type: 'result', id: msg.id, ok: false, error: err.message ?? String(err) });
     }
   });
-  ws.on('close', () => clients.delete(client));
+  ws.on('close', (code) => {
+    clients.delete(client);
+    log.info(`[ws] ${user.displayName} disconnected (code ${code}, after ${Math.round((Date.now() - since) / 1000)} s, ${clients.size} client(s))`);
+  });
 }
 
 // Keeps proxies (HA ingress) from closing idle sockets and drops clients that vanished without closing.

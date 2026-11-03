@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.6
+- De app blijft nu opnieuw verbinden met Home Assistant nadat HA herstart of een update installeert.
+  Voorheen gaf ze het na één mislukte poging op ("Home Assistant is niet bereikbaar") tot de app zelf
+  herstart werd. Nieuwe pogingen volgen met oplopende wachttijd (1 s tot max. 30 s), zonder limiet.
+- Elke 30 s controleert de app met een ping of de verbinding met Home Assistant nog leeft; een "dode"
+  verbinding (geen antwoord binnen 10 s) wordt automatisch vervangen door een nieuwe.
+- Robuustere verbinding in de browser/gsm: de app blijft altijd opnieuw proberen (oplopend tot 10 s),
+  vervangt bij terugkeren naar de voorgrond meteen een verbinding die blijft hangen, en een kapot bericht
+  breekt de verbinding niet meer. Mislukt het verbinden 3 keer na elkaar terwijl de pagina zelf wel
+  bereikbaar is (bv. "Invalid frame header" na het heropenen op iPhone), dan herlaadt de pagina zichzelf
+  (max. 1 keer per minuut).
+- Server: een verbroken of foutieve websocket van een browser kan de app niet meer laten crashen, en het
+  verbreken van een browserverbinding wordt gelogd (met sluitcode en duur) om problemen sneller te vinden.
+
 ## 0.7.5
 - Verbinding na het heropenen van de app: de app controleert de verbinding meteen bij terugkeren
   naar de voorgrond en verbindt direct opnieuw als ze weggevallen is (in plaats van tot 10 s te wachten

@@ -18,20 +18,34 @@ export const household = writable(/** @type {any} */ (null));
 export const others = writable(/** @type {{id:string,displayName:string,person:string|null,calendars:string[]}[]} */ ([]));
 export const toasts = writable(/** @type {{id:number,text:string,kind:string}[]} */ ([]));
 
+const CONNECT_TIMEOUT = 10000;
+/** An open socket must deliver `init` within this time. */
+const INIT_TIMEOUT = 20000;
+const PING_TIMEOUT = 5000;
+const HEARTBEAT = 25000;
+const RETRY_MIN = 500;
+const RETRY_MAX = 10000;
+/** On resume, a socket that is still connecting after this long is replaced right away. */
+const RESUME_GRACE = 3000;
+/** After this many failed sockets in a row the page is reloaded, at most once per RELOAD_INTERVAL. */
+const RELOAD_AFTER_FAILURES = 3;
+const RELOAD_INTERVAL = 60000;
+const RELOAD_KEY = 'td-reload-at';
+
 /** @type {WebSocket|null} */
 let ws = null;
 let seq = 1;
 const pending = new Map();
-let retry = 500;
+let retry = RETRY_MIN;
 let retryTimer = null;
 let connectTimer = null;
+let connectStarted = 0;
+let gotInit = false;
+let failures = 0;
+let reloading = false;
 let checking = null;
 const openWaiters = new Set();
 const listeners = new Set();
-
-const CONNECT_TIMEOUT = 10000;
-const PING_TIMEOUT = 5000;
-const HEARTBEAT = 25000;
 
 function wsUrl() {
   const u = new URL(location.href);
@@ -47,30 +61,51 @@ export function connect() {
   clearTimeout(retryTimer);
   retryTimer = null;
   connection.set('connecting');
-  const sock = new WebSocket(wsUrl());
+  gotInit = false;
+  connectStarted = Date.now();
+  let sock;
+  try {
+    sock = new WebSocket(wsUrl());
+  } catch {
+    return lost();
+  }
   ws = sock;
-  connectTimer = setTimeout(() => {
-    if (ws === sock && sock.readyState === WebSocket.CONNECTING) {
-      abandon();
-      lost();
-    }
-  }, CONNECT_TIMEOUT);
+  const failed = () => {
+    if (ws !== sock) return;
+    abandon();
+    lost();
+  };
+  connectTimer = setTimeout(failed, CONNECT_TIMEOUT);
   sock.onopen = () => {
     if (ws !== sock) return;
     clearTimeout(connectTimer);
+    connectTimer = setTimeout(() => !gotInit && failed(), INIT_TIMEOUT);
     connection.set('open');
-    retry = 500;
     for (const w of openWaiters) w.resolve();
     openWaiters.clear();
   };
-  sock.onclose = () => {
-    if (ws !== sock) return;
-    ws = null;
-    clearTimeout(connectTimer);
-    lost();
-  };
+  sock.onerror = failed;
+  sock.onclose = failed;
   sock.onmessage = (ev) => {
-    if (ws === sock) onMessage(JSON.parse(ev.data));
+    if (ws !== sock) return;
+    let msg;
+    try {
+      msg = JSON.parse(ev.data);
+    } catch {
+      console.warn('[ws] ignoring invalid message');
+      return;
+    }
+    if (msg?.type === 'init') {
+      gotInit = true;
+      clearTimeout(connectTimer);
+      retry = RETRY_MIN;
+      failures = 0;
+    }
+    try {
+      onMessage(msg);
+    } catch (err) {
+      console.error('[ws] message handling failed', err);
+    }
   };
 }
 
@@ -80,7 +115,7 @@ function abandon() {
   if (!ws) return;
   const sock = ws;
   ws = null;
-  sock.onopen = sock.onclose = sock.onmessage = null;
+  sock.onopen = sock.onclose = sock.onerror = sock.onmessage = null;
   try {
     sock.close();
   } catch {
@@ -93,19 +128,46 @@ function failPending(text) {
   pending.clear();
 }
 
+/** The socket failed or closed: retry forever with capped, jittered backoff. */
 function lost() {
   connection.set('closed');
   failPending('Verbinding verbroken');
+  if (++failures >= RELOAD_AFTER_FAILURES) reloadAsLastResort();
   clearTimeout(retryTimer);
-  retryTimer = setTimeout(connect, retry);
-  retry = Math.min(retry * 2, 10000);
+  retryTimer = setTimeout(connect, Math.min(RETRY_MAX, retry * (0.75 + Math.random() * 0.5)));
+  retry = Math.min(retry * 2, RETRY_MAX);
+}
+
+/**
+ * Sockets keep failing (e.g. "Invalid frame header" after resuming on iOS): reload the page, at most
+ * once per RELOAD_INTERVAL. Only when the page itself still loads: with an expired ingress session a
+ * reload would just show an error page, while the retries recover once HA renews the session.
+ */
+function reloadAsLastResort() {
+  if (reloading || typeof document === 'undefined' || document.hidden) return;
+  let last;
+  try {
+    last = Number(sessionStorage.getItem(RELOAD_KEY)) || 0;
+  } catch {
+    return;
+  }
+  if (Date.now() - last < RELOAD_INTERVAL) return;
+  reloading = true;
+  fetch(location.href, { cache: 'no-store' })
+    .then((r) => {
+      if (!r.ok || failures < RELOAD_AFTER_FAILURES) return;
+      sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+      location.reload();
+    })
+    .catch(() => {})
+    .finally(() => (reloading = false));
 }
 
 /** Drop the current socket and connect again right away (fresh `init` with all states). */
 export function reconnect() {
   abandon();
   failPending('Verbinding verbroken');
-  retry = 500;
+  retry = RETRY_MIN;
   connect();
 }
 
@@ -114,8 +176,13 @@ export function reconnect() {
  * socket that looks open but is dead, so ping it and reconnect when there is no answer.
  */
 export function checkConnection() {
-  if (!ws || ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) return reconnect();
-  if (ws.readyState === WebSocket.CONNECTING || checking) return;
+  if (ws?.readyState === WebSocket.CONNECTING) {
+    // A socket that started before the page was suspended may never finish: replace it.
+    if (Date.now() - connectStarted > RESUME_GRACE) reconnect();
+    return;
+  }
+  if (ws?.readyState !== WebSocket.OPEN) return reconnect();
+  if (!gotInit || checking) return; // INIT_TIMEOUT covers an open socket that stays silent
   const sock = ws;
   checking = send({ type: 'ping' }, PING_TIMEOUT)
     .catch(() => {
